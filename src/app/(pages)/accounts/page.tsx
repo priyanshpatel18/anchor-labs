@@ -45,12 +45,11 @@ function AccountTabContent({
   } = useAccountData(
     program,
     account.name as keyof (typeof program.idl)["accounts"],
-    { enabled: isActive }
+    { enabled: isActive && !!program }
   );
-  console.log(accountsData);
 
   const accountType = useMemo(
-    () => program.idl.types?.find((type) => type.name === account.name),
+    () => program?.idl?.types?.find((type) => type.name === account.name),
     [program, account]
   );
 
@@ -63,13 +62,14 @@ function AccountTabContent({
     [accountsData]
   );
 
+  if (!program) {
+    return null;
+  }
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center p-12">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">Loading accounts...</p>
-        </div>
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -81,41 +81,28 @@ function AccountTabContent({
       errorMsg.includes("Failed to fetch")
     ) {
       return (
-        <Alert variant="destructive" className="m-6">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription className="ml-2">
-            <div className="font-medium mb-1">Connection Blocked</div>
-            <div className="text-sm opacity-90">
-              Your browser is blocking requests to the RPC endpoint. This is often caused by an ad blocker,
-              browser extension, or network policy. Please whitelist this site or disable extensions for this page.
-            </div>
-            <div className="text-xs mt-2 font-mono opacity-75 break-all">{errorMsg}</div>
-          </AlertDescription>
-        </Alert>
+        <div className="p-4 text-red-500">
+          Your browser is blocking requests to the URL required to fetch account
+          data. This is often caused by an ad blocker, browser extension, or
+          network policy. Please whitelist this site or disable the extension
+          for this page.
+          <br />
+          <span className="text-xs break-all">{errorMsg}</span>
+        </div>
       );
     }
     return (
-      <Alert variant="destructive" className="m-6">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription className="ml-2">
-          <div className="font-medium mb-1">Error Loading Accounts</div>
-          <div className="text-sm opacity-90">{errorMsg}</div>
-        </AlertDescription>
-      </Alert>
+      <div className="p-4 text-red-500">
+        Error fetching accounts: {errorMsg}
+      </div>
     );
   }
 
   if (!accountType) {
     return (
-      <Alert className="m-6 border-orange-200 bg-orange-50 dark:bg-orange-950/20">
-        <AlertCircle className="h-4 w-4 text-orange-600" />
-        <AlertDescription className="ml-2 text-orange-800 dark:text-orange-200">
-          <div className="font-medium">Type Definition Missing</div>
-          <div className="text-sm mt-1">
-            Could not find type definition for account: <span className="font-mono">{account.name}</span>
-          </div>
-        </AlertDescription>
-      </Alert>
+      <div className="p-4 text-orange-500">
+        Could not find type definition for account: {account.name}
+      </div>
     );
   }
 
@@ -158,7 +145,7 @@ export default function AccountsPage() {
           </div>
           <h2 className="text-xl font-semibold mb-2">No Account Types Defined</h2>
           <p className="text-muted-foreground text-center max-w-md">
-            This program doesn't define any account types in its IDL. Account types are required to store and query on-chain data.
+            This program doesn&lsquo;t define any account types in its IDL. Account types are required to store and query on-chain data.
           </p>
         </div>
       </div>
@@ -199,11 +186,7 @@ export default function AccountsPage() {
           </div>
 
           {accounts.map((account) => (
-            <TabsContent
-              key={account.name}
-              value={account.name}
-              className="mt-6 focus-visible:outline-none focus-visible:ring-0"
-            >
+            <TabsContent key={account.name} value={account.name}>
               <AccountTabContent
                 account={account}
                 isActive={activeTab === account.name}

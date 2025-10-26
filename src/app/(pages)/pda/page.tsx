@@ -166,8 +166,9 @@ export default function PDAPage() {
       });
 
       toast.success("PDA derived successfully!");
-    } catch (err: any) {
-      setDeriveError(err.message || "Failed to derive PDA");
+    } catch (err) {
+      if (err instanceof Error)
+        setDeriveError(err.message || "Failed to derive PDA");
       setDerivedPDA(null);
     }
   };
@@ -227,7 +228,7 @@ export default function PDAPage() {
                   How it works
                 </p>
                 <p className="text-sm text-blue-800 dark:text-blue-200">
-                  Add seeds in order, choose their type, and derive your PDA. Common patterns: 
+                  Add seeds in order, choose their type, and derive your PDA. Common patterns:
                   <code className="mx-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900 rounded text-xs">
                     [&quot;account_type&quot;, user_pubkey, id]
                   </code>
@@ -349,8 +350,8 @@ export default function PDAPage() {
                           seed.type === "string"
                             ? "e.g., user_account"
                             : seed.type === "publicKey"
-                            ? "Base58 address"
-                            : "Number"
+                              ? "Base58 address"
+                              : "Number"
                         }
                         value={seed.value}
                         onChange={(e) =>

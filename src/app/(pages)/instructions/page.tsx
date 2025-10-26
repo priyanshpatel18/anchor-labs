@@ -26,16 +26,19 @@ import {
   CheckCircle2,
   Code,
   Copy,
+  Database,
   ExternalLink,
   Loader2,
   Rocket,
   Terminal,
   Wallet as WalletIcon,
   XCircle,
+  Zap,
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import ProgramNotFound from "@/components/ProgramNotFound";
 import { TypeInput } from "@/components/TypeInput";
 import { useAutoReinitialize } from "@/hooks/useAutoReinitialize";
 import {
@@ -313,10 +316,9 @@ export default function InstructionBuilderPage() {
     }
   };
 
-  // TODO: Add NoProgramScreen
-  // if (!program || !programDetails) {
-  //   return <NoProgramFound />;
-  // }
+  if (!program || !programDetails) {
+    return <ProgramNotFound />;
+  }
 
   if (!instructions || instructions.length === 0) {
     return (
@@ -329,16 +331,21 @@ export default function InstructionBuilderPage() {
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto p-3 sm:p-4 lg:p-6">
-      <div className="space-y-6 sm:space-y-8">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-            Instruction Builder
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Execute instructions from the {programDetails?.name || "selected"}{" "}
-            program
-          </p>
+    <div className="w-full max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
+      <div className="space-y-6">
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-primary/10 p-2">
+              <Zap className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Instruction Builder</h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Execute instructions from the {programDetails?.name || "selected"}{" "}
+                program
+              </p>
+            </div>
+          </div>
         </div>
 
         {formattedInstructions.length > 0 ? (

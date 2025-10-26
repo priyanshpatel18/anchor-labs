@@ -36,15 +36,14 @@ function AccountTabContent({
   isActive: boolean;
 }) {
   const { program } = useProgramStore();
-  if (!program) return null;
 
   const {
     data: accountsData,
     isLoading,
     error,
   } = useAccountData(
-    program,
-    account.name as keyof (typeof program.idl)["accounts"],
+    program!,
+    account.name as never,
     { enabled: isActive && !!program }
   );
 

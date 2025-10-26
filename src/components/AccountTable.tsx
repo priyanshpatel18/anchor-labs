@@ -140,19 +140,21 @@ export function AccountTable({ data, accountType }: AccountTableProps) {
     ];
 
     function isIdlField(field: unknown): field is IdlField {
+      const possibleField = field as { name?: unknown; type?: unknown } | null;
+
       return (
-        typeof field === "object" &&
-        field !== null &&
-        typeof (field as any).name === "string" &&
-        "type" in (field as any)
+        typeof possibleField === "object" &&
+        possibleField !== null &&
+        typeof possibleField.name === "string" &&
+        "type" in possibleField
       );
     }
 
     const accountFields: IdlField[] =
       accountType &&
-      accountType.type &&
-      accountType.type.kind === "struct" &&
-      Array.isArray(accountType.type.fields)
+        accountType.type &&
+        accountType.type.kind === "struct" &&
+        Array.isArray(accountType.type.fields)
         ? (accountType.type.fields as unknown[]).filter(isIdlField)
         : [];
 
@@ -190,7 +192,7 @@ export function AccountTable({ data, accountType }: AccountTableProps) {
                 : String(value ?? "");
 
             if (fieldType === "pubkey") {
-              const shortValue = displayValue.length > 16 
+              const shortValue = displayValue.length > 16
                 ? `${displayValue.slice(0, 6)}...${displayValue.slice(-6)}`
                 : displayValue;
               return (
@@ -259,7 +261,11 @@ export function AccountTable({ data, accountType }: AccountTableProps) {
     return [...baseColumns, ...dynamicColumns];
   }, [accountType]);
 
-  const globalFilterFn = (row: any, columnId: string, filterValue: string) => {
+  const globalFilterFn = (
+    row: { getValue: (id: string) => unknown }, // Simplified interface
+    columnId: string,
+    filterValue: string
+  ) => {
     const value = row.getValue(columnId);
     if (!filterValue) return true;
     const search = filterValue.toLowerCase();
@@ -383,10 +389,10 @@ export function AccountTable({ data, accountType }: AccountTableProps) {
                               />
                             ),
                           }[header.column.getIsSorted() as string] ?? (
-                            <div className="h-4 w-4 opacity-0 group-hover:opacity-50 transition-opacity">
-                              <ChevronUpIcon className="h-4 w-4" />
-                            </div>
-                          )}
+                              <div className="h-4 w-4 opacity-0 group-hover:opacity-50 transition-opacity">
+                                <ChevronUpIcon className="h-4 w-4" />
+                              </div>
+                            )}
                         </div>
                       </div>
                     ) : (

@@ -9,11 +9,11 @@ const getAllAccountsData = async <T extends anchor.Idl>(
 ) => {
   try {
     const accountNameStr = String(accountName);
-    
+
     if (!program.account[accountNameStr as keyof typeof program.account]) {
       throw new Error(`Account type "${accountNameStr}" not found in program`);
     }
-    
+
     const data = await program.account[accountNameStr as keyof typeof program.account].all();
     return data;
   } catch (error) {
@@ -29,15 +29,15 @@ export const getAccountData = async <T extends anchor.Idl>(
   pubkey: string
 ) => {
   if (!pubkey) return null;
-  
+
   try {
     const accountKeys = new anchor.web3.PublicKey(pubkey);
     const accountNameStr = String(accountName);
-    
+
     if (!program.account[accountNameStr as keyof typeof program.account]) {
       throw new Error(`Account type "${accountNameStr}" not found in program`);
     }
-    
+
     const data = await program.account[accountNameStr as keyof typeof program.account].fetchNullable(
       accountKeys
     );
@@ -106,19 +106,19 @@ export function useAccountsByPubkeys<T extends anchor.Idl>(
       (options?.enabled ?? true),
     queryFn: async () => {
       if (!pubkeys || pubkeys.length === 0) return [];
-      
+
       try {
         const accountNameStr = String(accountName);
-        
+
         if (!program.account[accountNameStr as keyof typeof program.account]) {
           throw new Error(`Account type "${accountNameStr}" not found in program`);
         }
-        
+
         const publicKeys = pubkeys.map((k) => new anchor.web3.PublicKey(k));
         const data = await program.account[accountNameStr as keyof typeof program.account].fetchMultiple(
           publicKeys
         );
-        
+
         // Filter out null accounts (non-existent)
         return data.map((account, i) => ({
           publicKey: publicKeys[i],
@@ -136,6 +136,10 @@ export function useAccountsByPubkeys<T extends anchor.Idl>(
   });
 }
 
+type AnchorProgramFilter =
+  | { dataSize: number }
+  | { memcmp: { offset: number; bytes: string } };
+
 // Hook: Fetch accounts with filters (memcmp, dataSize)
 export function useFilteredAccountData<T extends anchor.Idl>(
   program: anchor.Program<T>,
@@ -150,25 +154,30 @@ export function useFilteredAccountData<T extends anchor.Idl>(
     queryKey: ["filteredAccountData", accountName, filters],
     queryFn: async () => {
       const accountNameStr = String(accountName);
-      
+
       if (!program.account[accountNameStr as keyof typeof program.account]) {
         throw new Error(`Account type "${accountNameStr}" not found in program`);
       }
-      
-      const anchorFilters: any[] = [];
-      
+
+      type AnchorFilterObject = { dataSize: number } | { memcmp: { offset: number; bytes: string } };
+      const anchorFilters: AnchorProgramFilter[] = [];
+
       if (filters?.memcmp) {
-        anchorFilters.push(...filters.memcmp);
+        // FIX: Map the input memcmp array to the format Anchor expects
+        // Each filter object must be wrapped in { memcmp: ... }
+        const memcmpFilters: AnchorFilterObject[] = filters.memcmp.map(filter => ({
+          memcmp: filter
+        }));
+        anchorFilters.push(...memcmpFilters);
       }
-      
       if (filters?.dataSize) {
         anchorFilters.push({ dataSize: filters.dataSize });
       }
-      
+
       const data = await program.account[accountNameStr as keyof typeof program.account].all(
         anchorFilters.length > 0 ? anchorFilters : undefined
       );
-      
+
       return data;
     },
     enabled: !!program && !!accountName && (options?.enabled ?? true),

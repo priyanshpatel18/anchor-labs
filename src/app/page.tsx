@@ -2,6 +2,7 @@
 
 import ProgramInitializationWizard from "@/components/ProgramWizard/ProgramInitializationWizard";
 import WalletConnectionPrompt from "@/components/WalletConnectionPrompt";
+import WelcomeAnimation from "@/components/WelcomeAnimation";
 import { Spinner } from "@/components/ui/8bit/spinner";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +17,7 @@ import useProgramStore from "@/stores/programStore";
 import { useAnchorWallet } from "@solana/wallet-adapter-react";
 import { IconCheck, IconRocket, IconSettings } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export default function HomePage() {
   const {
@@ -27,7 +29,20 @@ export default function HomePage() {
   } = useProgramStore();
   const router = useRouter();
   const wallet = useAnchorWallet();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
   useAutoReinitialize(wallet ?? undefined);
+
+  if (loading) {
+    return <WelcomeAnimation />;
+  }
 
   // CASE 0: Program is currently reinitializing → show loader
   if (isReinitializing) {

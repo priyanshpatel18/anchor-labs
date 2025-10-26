@@ -219,17 +219,17 @@ export default function PDAPage() {
         </div>
 
         {/* Info Card */}
-        <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-900">
+        <Card>
           <CardContent className="pt-4 pb-4">
             <div className="flex gap-3">
-              <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+              <Sparkles className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
               <div className="space-y-1">
-                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                <p className="text-sm font-medium">
                   How it works
                 </p>
-                <p className="text-sm text-blue-800 dark:text-blue-200">
+                <p className="text-sm text-muted-foreground">
                   Add seeds in order, choose their type, and derive your PDA. Common patterns:
-                  <code className="mx-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900 rounded text-xs">
+                  <code className="mx-1 px-1.5 py-0.5 bg-muted rounded text-xs">
                     [&quot;account_type&quot;, user_pubkey, id]
                   </code>
                 </p>
@@ -237,7 +237,7 @@ export default function PDAPage() {
             </div>
           </CardContent>
         </Card>
-
+        
         {/* Program Info */}
         <Card>
           <CardHeader className="pb-3">

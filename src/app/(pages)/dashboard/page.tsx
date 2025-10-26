@@ -80,21 +80,9 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-        {/* <Button
-          onClick={handleReinitialize}
-          variant="outline"
-          size="lg"
-          className="w-full lg:w-auto"
-          disabled={isReinitializing}
-        >
-          <RefreshCw
-            className={cn("mr-2 h-4 w-4", isReinitializing && "animate-spin")}
-          />
-          {isReinitializing ? "Reinitializing..." : "Reinitialize"}
-        </Button> */}
       </div>
 
-      {/* Main Grid - 2x2 layout */}
+      {/* Main Grid - 2x3 layout */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
         {/* Program ID Card */}
         <div className="bg-card border rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
@@ -224,7 +212,7 @@ export default function Dashboard() {
         </Link>
 
         {/* Instructions Card */}
-        <Link href="/ix" className="block group">
+        <Link href="/instructions" className="block group">
           <div className="bg-card border rounded-xl p-6 shadow-sm hover:shadow-lg transition-all h-full cursor-pointer hover:border-primary/50">
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
@@ -246,10 +234,36 @@ export default function Dashboard() {
             </div>
           </div>
         </Link>
+
+        {/* PDA Derivation Card */}
+        <Link href="/pda" className="block group xl:col-span-2">
+          <div className="bg-card border rounded-xl p-6 shadow-sm hover:shadow-lg transition-all h-full cursor-pointer hover:border-primary/50">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                  <Database className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold mb-1">PDA Derivation</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Derive program addresses using custom seeds
+                  </p>
+                </div>
+              </div>
+              <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+            </div>
+            <div className="mt-6 p-4 bg-muted/50 rounded-lg">
+              <div className="text-xs text-muted-foreground mb-1">Quick Access</div>
+              <div className="text-sm font-medium">
+                Compute PDAs for your Solana program
+              </div>
+            </div>
+          </div>
+        </Link>
       </div>
 
       {/* Transactions Card - Full Width */}
-      <Link href="/tx" className="block group">
+      <Link href="/transactions" className="block group">
         <div className="bg-card border rounded-xl p-6 shadow-sm hover:shadow-lg transition-all cursor-pointer hover:border-primary/50">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">

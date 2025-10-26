@@ -42,7 +42,7 @@ interface TransactionTableProps {
 
 type ExplorerType = "solana" | "solscan" | "solanaFm";
 
-function getExplorerUrl(
+export function getExplorerUrl(
   signature: string,
   explorerType: ExplorerType,
   rpcUrl: string

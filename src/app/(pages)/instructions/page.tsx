@@ -26,19 +26,19 @@ import {
   CheckCircle2,
   Code,
   Copy,
-  Database,
   ExternalLink,
   Loader2,
   Rocket,
   Terminal,
   Wallet as WalletIcon,
   XCircle,
-  Zap,
+  Zap
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import ProgramNotFound from "@/components/ProgramNotFound";
+import { getExplorerUrl } from "@/components/TransactionTable";
 import { TypeInput } from "@/components/TypeInput";
 import { useAutoReinitialize } from "@/hooks/useAutoReinitialize";
 import {
@@ -646,8 +646,8 @@ export default function InstructionBuilderPage() {
                         className="h-6 gap-1"
                         asChild
                       >
-                        <Link href={`/tx/${result.signature}`}>
-                          <span className="text-xs">View Signature Page</span>
+                        <Link href={`${getExplorerUrl(result.signature, "solana", programDetails.rpcUrl)}`} target="_blank">
+                          <span className="text-xs">View Transaction</span>
                           <ExternalLink className="h-3 w-3" />
                         </Link>
                       </Button>

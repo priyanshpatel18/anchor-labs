@@ -44,6 +44,11 @@ const NAV_ITEMS = [
     url: "/transactions",
     icon: IconChartBar,
   },
+  {
+    title: "PDAs",
+    url: "/pda",
+    icon: IconDatabase,
+  },
 ] as const;
 
 // Main Sidebar Component

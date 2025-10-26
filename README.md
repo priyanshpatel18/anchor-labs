@@ -1,4 +1,14 @@
-# AnchorLabs
+<div align="center">
+  <h1>AnchorLabs</h1>
+  <p>Test Solana programs in your browser</p>
+  
+  <a class="header-badge" target="_blank" href="https://twitter.com/solixdb"> <img alt="Twitter" src="https://img.shields.io/badge/@solixdb-000000?style=for-the-badge&logo=x&logoColor=white"> </a>
+
+  <img
+    src="./public/open-graph.png"
+    alt="cover-image"
+  />
+</div>
 
 A web-based development environment for testing and interacting with Solana programs built with the Anchor framework.
 

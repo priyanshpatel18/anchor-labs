@@ -1,5 +1,8 @@
 "use client";
 
+import ProgramNotFound from "@/components/ProgramNotFound";
+import { getExplorerUrl } from "@/components/TransactionTable";
+import { TypeInput } from "@/components/TypeInput";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,8 +12,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -19,14 +24,21 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useAutoReinitialize } from "@/hooks/useAutoReinitialize";
 import useProgramStore from "@/stores/programStore";
 import { BN } from "@coral-xyz/anchor";
+import {
+  IdlInstruction,
+  IdlType
+} from "@coral-xyz/anchor/dist/cjs/idl";
+import { useAnchorWallet, useWallet } from "@solana/wallet-adapter-react";
 import { Connection, PublicKey } from "@solana/web3.js";
 import {
   CheckCircle2,
   Code,
   Copy,
   ExternalLink,
+  Hash,
   Loader2,
   Rocket,
   Terminal,
@@ -36,17 +48,16 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-
-import ProgramNotFound from "@/components/ProgramNotFound";
-import { getExplorerUrl } from "@/components/TransactionTable";
-import { TypeInput } from "@/components/TypeInput";
-import { useAutoReinitialize } from "@/hooks/useAutoReinitialize";
-import {
-  IdlInstruction,
-  IdlInstructionAccount
-} from "@coral-xyz/anchor/dist/cjs/idl";
-import { useAnchorWallet, useWallet } from "@solana/wallet-adapter-react";
 import { toast } from "sonner";
+
+type SeedType = "string" | "publicKey" | "u64" | "u32" | "u16" | "u8";
+
+interface SeedInput {
+  id: string;
+  type: SeedType;
+  value: string;
+  label: string;
+}
 
 export default function InstructionBuilderPage() {
   const { program, programDetails } = useProgramStore();
@@ -67,6 +78,12 @@ export default function InstructionBuilderPage() {
   const [error, setError] = useState<string | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [showError, setShowError] = useState(false);
+
+  // PDA States
+  const [pdaDialogOpen, setPdaDialogOpen] = useState<string | null>(null);
+  const [pdaSeeds, setPdaSeeds] = useState<SeedInput[]>([
+    { id: "1", type: "string", value: "", label: "Seed 1" },
+  ]);
 
   // Get instructions from the program IDL
   const instructions = program?.idl?.instructions;
@@ -121,6 +138,16 @@ export default function InstructionBuilderPage() {
     (currentArgs: Record<string, unknown>, ix: IdlInstruction) => {
       return ix.args.map((arg) => {
         const value = currentArgs[arg.name];
+
+        // Handle enum types - they're already in correct format { VariantName: {} }
+        if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+          // Check if it's an enum object (has a single key with empty object value)
+          const keys = Object.keys(value);
+          if (keys.length === 1 && typeof value[keys[0] as keyof typeof value] === "object") {
+            return value; // Return enum as-is
+          }
+        }
+
         if (typeof arg.type === "string") {
           switch (arg.type) {
             case "u8":
@@ -136,74 +163,75 @@ export default function InstructionBuilderPage() {
             case "u256":
             case "i256":
               return value ? new BN(value) : new BN(0);
+            case "pubkey":
+              return value ? new PublicKey(value as string) : null;
             default:
               return value;
           }
         }
+
+        // Handle option types
+        if (typeof arg.type === "object" && "option" in arg.type) {
+          if (!value || value === "") return null;
+
+          // If option wraps a number type, convert it
+          if (typeof arg.type.option === "string") {
+            const optionType = arg.type.option;
+            if (["u8", "i8", "u16", "i16", "u32", "i32", "u64", "i64", "u128", "i128", "u256", "i256"].includes(optionType)) {
+              return new BN(value);
+            }
+            if (optionType === "pubkey") {
+              return new PublicKey(value as string);
+            }
+          }
+
+          return value;
+        }
+
         return value;
       });
     },
     []
   );
 
-  // Fetch resolved pubkeys using method builder
-  const fetchResolvedPubkeys = useCallback(async () => {
-    if (!program || !instruction || !publicKey) return;
-
-    try {
-      // Create method builder with current args
-      const processedArgs = processArgs(args, instruction);
-      const methodBuilder = program.methods[instruction.name](...processedArgs);
-
-      // Get resolved pubkeys
-      const resolvedPubkeys = await methodBuilder.pubkeys();
-
-      // Update accounts with resolved pubkeys
-      const updates: Record<string, string> = {};
-
-      for (const [accountName, pubkey] of Object.entries(resolvedPubkeys)) {
-        if (pubkey) {
-          updates[accountName] = pubkey.toString();
-        }
-      }
-
-      // Auto-populate signer accounts
-      const commonSigners = instruction.accounts.filter(
-        (acc) =>
-          "signer" in acc &&
-          acc.signer === true &&
-          ["authority", "payer", "signer"].some((name) =>
-            acc.name.toLowerCase().includes(name.toLowerCase())
-          )
-      ) as IdlInstructionAccount[];
-
-      for (const account of commonSigners) {
-        updates[account.name] = publicKey.toString();
-      }
-
-      // Update accounts state if we have any resolved pubkeys
-      if (Object.keys(updates).length > 0) {
-        setAccounts((prev) => ({ ...prev, ...updates }));
-      }
-    } catch (error) {
-      console.warn("Failed to resolve pubkeys:", error);
-    }
-  }, [program, instruction, args, publicKey, processArgs]);
-
-  // Auto-populate accounts when instruction or args change
-  useEffect(() => {
-    if (instruction && Object.keys(args).length > 0) {
-      fetchResolvedPubkeys();
-    }
-  }, [instruction, args, fetchResolvedPubkeys]);
-
   // Reset form when instruction changes
   useEffect(() => {
     if (instruction) {
+      const resolveType = (type: IdlType): IdlType | { kind: "struct" | "enum"; fields?: Array<{ name: string; type: unknown }>; variants?: Array<{ name: string; fields?: unknown[] }> } => {
+        if (typeof type === "object" && "option" in type) {
+          type = type.option;
+        }
+        if (typeof type === "object" && "defined" in type) {
+          let typeName: string;
+          if (typeof type.defined === "string") {
+            typeName = type.defined;
+          } else if (typeof type.defined === "object" && "name" in type.defined) {
+            typeName = type.defined.name;
+          } else {
+            return type;
+          }
+          const definedType = programDetails?.types?.find(
+            (t) => t.name.toLowerCase() === typeName.toLowerCase()
+          );
+          return definedType?.type || type;
+        }
+        return type;
+      };
+
       // Initialize args with default values
       const initialArgs: Record<string, unknown> = {};
       instruction.args.forEach((arg) => {
-        initialArgs[arg.name] = "";
+        const resolvedType = resolveType(arg.type);
+        const isEnum = typeof resolvedType === "object" &&
+          "kind" in resolvedType &&
+          resolvedType.kind === "enum";
+
+        if (isEnum && resolvedType.variants && resolvedType.variants.length > 0) {
+          const firstVariant = resolvedType.variants[0].name;
+          initialArgs[arg.name] = { [firstVariant]: {} };
+        } else {
+          initialArgs[arg.name] = "";
+        }
       });
       setArgs(initialArgs);
 
@@ -214,7 +242,7 @@ export default function InstructionBuilderPage() {
       });
       setAccounts(initialAccounts);
     }
-  }, [selectedIx]);
+  }, [selectedIx, instruction, programDetails]);
 
   const handleArgChange = (name: string, value: unknown) => {
     const newArgs = {
@@ -313,6 +341,95 @@ export default function InstructionBuilderPage() {
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Add these functions before the return statement
+  const addPdaSeed = () => {
+    setPdaSeeds([
+      ...pdaSeeds,
+      {
+        id: Date.now().toString(),
+        type: "string",
+        value: "",
+        label: `Seed ${pdaSeeds.length + 1}`,
+      },
+    ]);
+  };
+
+  const removePdaSeed = (id: string) => {
+    if (pdaSeeds.length > 1) {
+      setPdaSeeds(pdaSeeds.filter((s) => s.id !== id));
+    }
+  };
+
+  const updatePdaSeed = (id: string, field: keyof SeedInput, value: string) => {
+    setPdaSeeds(
+      pdaSeeds.map((s) => (s.id === id ? { ...s, [field]: value } : s))
+    );
+  };
+
+  const derivePDAForAccount = (accountName: string) => {
+    if (!program) return;
+
+    try {
+      const seedBuffers: Buffer[] = [];
+
+      for (const seed of pdaSeeds) {
+        if (!seed.value.trim()) {
+          throw new Error(`${seed.label} cannot be empty`);
+        }
+
+        switch (seed.type) {
+          case "string":
+            seedBuffers.push(Buffer.from(seed.value));
+            break;
+          case "publicKey":
+            const pubkey = new PublicKey(seed.value);
+            seedBuffers.push(pubkey.toBuffer());
+            break;
+          case "u64": {
+            const num = BigInt(seed.value);
+            const buf = Buffer.alloc(8);
+            buf.writeBigUInt64LE(num);
+            seedBuffers.push(buf);
+            break;
+          }
+          case "u32": {
+            const num = parseInt(seed.value);
+            const buf = Buffer.alloc(4);
+            buf.writeUInt32LE(num);
+            seedBuffers.push(buf);
+            break;
+          }
+          case "u16": {
+            const num = parseInt(seed.value);
+            const buf = Buffer.alloc(2);
+            buf.writeUInt16LE(num);
+            seedBuffers.push(buf);
+            break;
+          }
+          case "u8": {
+            const num = parseInt(seed.value);
+            const buf = Buffer.alloc(1);
+            buf.writeUInt8(num);
+            seedBuffers.push(buf);
+            break;
+          }
+        }
+      }
+
+      const [pda] = PublicKey.findProgramAddressSync(
+        seedBuffers,
+        program.programId
+      );
+
+      handleAccountChange(accountName, pda.toBase58());
+      setPdaDialogOpen(null);
+      setPdaSeeds([{ id: "1", type: "string", value: "", label: "Seed 1" }]);
+      toast.success("PDA derived and filled!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to derive PDA");
     }
   };
 
@@ -450,43 +567,98 @@ export default function InstructionBuilderPage() {
                           <h3 className="text-lg font-medium">Arguments</h3>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          {instruction.args.map((arg) => (
-                            <div
-                              key={arg.name}
-                              className="space-y-2 bg-muted/40 p-4 rounded-lg"
-                            >
-                              <div className="flex items-center justify-between">
-                                <Label
-                                  htmlFor={`arg-${arg.name}`}
-                                  className="font-medium"
-                                >
-                                  {arg.name}
-                                </Label>
-                                <Badge
-                                  variant="outline"
-                                  className="font-mono text-xs"
-                                >
-                                  {typeof arg.type === "string"
-                                    ? arg.type
-                                    : JSON.stringify(arg.type)}
-                                </Badge>
-                              </div>
-                              <TypeInput
-                                type={arg.type}
-                                value={args[arg.name] as string | number | readonly string[] | undefined}
-                                onChange={(value: unknown) =>
-                                  handleArgChange(arg.name, value)
+                          {instruction.args.map((arg) => {
+                            const resolveType = (type: IdlType): IdlType | { kind: "struct" | "enum"; fields?: Array<{ name: string; type: unknown }>; variants?: Array<{ name: string; fields?: unknown[] }> } => {
+                              // Handle option types: {option: {defined: {name: "TypeName"}}}
+                              if (typeof type === "object" && "option" in type) {
+                                type = type.option;
+                              }
+
+                              if (typeof type === "object" && "defined" in type) {
+                                // Handle both {defined: "TypeName"} and {defined: {name: "TypeName"}}
+                                let typeName: string;
+
+                                if (typeof type.defined === "string") {
+                                  typeName = type.defined;
+                                } else if (typeof type.defined === "object" && "name" in type.defined) {
+                                  typeName = type.defined.name;
+                                } else {
+                                  return type;
                                 }
-                                placeholder={`Enter ${arg.name}`}
-                                className="mt-1.5"
-                              />
-                              {arg.docs && arg.docs[0] && (
-                                <p className="text-xs text-muted-foreground mt-1.5">
-                                  {arg.docs[0]}
-                                </p>
-                              )}
-                            </div>
-                          ))}
+
+                                // Find the type definition in programDetails.types
+                                const definedType = programDetails?.types?.find(
+                                  (t) => t.name.toLowerCase() === typeName.toLowerCase()
+                                );
+
+                                return definedType?.type || type;
+                              }
+                              return type;
+                            };
+
+                            const resolvedType = resolveType(arg.type);
+                            const isEnum = typeof resolvedType === "object" &&
+                              "kind" in resolvedType &&
+                              resolvedType.kind === "enum";
+
+                            const getSelectedEnumVariant = (value: unknown): string => {
+                              if (typeof value === "object" && value !== null) {
+                                const keys = Object.keys(value);
+                                return keys.length > 0 ? keys[0] : "";
+                              }
+                              return "";
+                            };
+
+                            return (
+                              <div key={arg.name} className="space-y-2 bg-muted/40 p-4 rounded-lg">
+                                <div className="flex items-center justify-between">
+                                  <Label htmlFor={`arg-${arg.name}`} className="font-medium">
+                                    {arg.name}
+                                  </Label>
+                                  <Badge variant="outline" className="font-mono text-xs">
+                                    {isEnum
+                                      ? "enum"
+                                      : typeof arg.type === "object" && "option" in arg.type
+                                        ? `optional ${typeof arg.type.option === "string" ? arg.type.option : "type"}`
+                                        : typeof arg.type === "string"
+                                          ? arg.type
+                                          : JSON.stringify(arg.type)}
+                                  </Badge>
+                                </div>
+
+                                {isEnum ? (
+                                  <Select
+                                    value={getSelectedEnumVariant(args[arg.name])}
+                                    onValueChange={(value) => handleArgChange(arg.name, { [value]: {} })}
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue placeholder={`Select ${arg.name}`} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {(typeof resolvedType === "object" &&
+                                        "variants" in resolvedType &&
+                                        Array.isArray(resolvedType.variants)
+                                        ? resolvedType.variants
+                                        : []
+                                      ).map((variant: { name: string; fields?: unknown[] }) => (
+                                        <SelectItem key={variant.name} value={variant.name}>
+                                          {variant.name}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                ) : (
+                                  <TypeInput
+                                    type={arg.type}
+                                    value={args[arg.name] as string | number | readonly string[] | undefined}
+                                    onChange={(value: unknown) => handleArgChange(arg.name, value)}
+                                    placeholder={`Enter ${arg.name}`}
+                                    className="mt-1.5"
+                                  />
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
@@ -496,7 +668,6 @@ export default function InstructionBuilderPage() {
                         <Separator className="my-6" />
                       )}
 
-                    {/* Accounts Section */}
                     {instruction.accounts.length > 0 && (
                       <div>
                         <div className="flex items-center mb-4">
@@ -550,30 +721,107 @@ export default function InstructionBuilderPage() {
                                   id={`account-${account.name}`}
                                   value={accounts[account.name] || ""}
                                   onChange={(e) =>
-                                    handleAccountChange(
-                                      account.name,
-                                      e.target.value
-                                    )
+                                    handleAccountChange(account.name, e.target.value)
                                   }
                                   placeholder={`Enter ${account.name} public key`}
                                   className="font-mono text-sm flex-1"
                                 />
-                                {publicKey &&
-                                  ["authority", "payer", "signer"].some(
-                                    (term) =>
-                                      account.name
-                                        .toLowerCase()
-                                        .includes(term.toLowerCase())
-                                  ) && (
+
+                                {/* Derive PDA Button */}
+                                <Dialog open={pdaDialogOpen === account.name} onOpenChange={(open) => setPdaDialogOpen(open ? account.name : null)}>
+                                  <DialogTrigger asChild>
                                     <Button
                                       variant="outline"
                                       size="icon"
-                                      onClick={() =>
-                                        handleAccountChange(
-                                          account.name,
-                                          publicKey.toString()
-                                        )
-                                      }
+                                      title="Derive PDA"
+                                    >
+                                      <Hash className="h-4 w-4" />
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                                    <DialogHeader>
+                                      <DialogTitle>Derive PDA for {account.name}</DialogTitle>
+                                      <DialogDescription>
+                                        Configure seeds to derive a Program Derived Address
+                                      </DialogDescription>
+                                    </DialogHeader>
+
+                                    <div className="space-y-4 py-4">
+                                      {pdaSeeds.map((seed, index) => (
+                                        <div key={seed.id} className="flex flex-col gap-3 p-4 border rounded-lg bg-muted/20">
+                                          <div className="flex items-center justify-between">
+                                            <Label className="text-sm font-medium">Seed {index + 1}</Label>
+                                            {pdaSeeds.length > 1 && (
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-7 text-xs text-red-600"
+                                                onClick={() => removePdaSeed(seed.id)}
+                                              >
+                                                Remove
+                                              </Button>
+                                            )}
+                                          </div>
+
+                                          <div className="grid grid-cols-2 gap-3">
+                                            <div className="space-y-2">
+                                              <Label className="text-xs">Type</Label>
+                                              <Select
+                                                value={seed.type}
+                                                onValueChange={(value) => updatePdaSeed(seed.id, "type", value)}
+                                              >
+                                                <SelectTrigger className="h-9">
+                                                  <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                  <SelectItem value="string">String</SelectItem>
+                                                  <SelectItem value="publicKey">Public Key</SelectItem>
+                                                  <SelectItem value="u64">u64</SelectItem>
+                                                  <SelectItem value="u32">u32</SelectItem>
+                                                  <SelectItem value="u16">u16</SelectItem>
+                                                  <SelectItem value="u8">u8</SelectItem>
+                                                </SelectContent>
+                                              </Select>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                              <Label className="text-xs">Value</Label>
+                                              <Input
+                                                placeholder={seed.type === "string" ? "e.g., account" : seed.type === "publicKey" ? "Base58 address" : "Number"}
+                                                value={seed.value}
+                                                onChange={(e) => updatePdaSeed(seed.id, "value", e.target.value)}
+                                                className="h-9 font-mono text-sm"
+                                              />
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ))}
+
+                                      <div className="flex gap-2">
+                                        <Button variant="outline" size="sm" onClick={addPdaSeed}>
+                                          Add Seed
+                                        </Button>
+                                        <Button
+                                          onClick={() => derivePDAForAccount(account.name)}
+                                          className="flex-1"
+                                          disabled={pdaSeeds.some((s) => !s.value.trim())}
+                                        >
+                                          <Hash className="h-4 w-4 mr-2" />
+                                          Derive & Fill
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </DialogContent>
+                                </Dialog>
+
+                                {/* Existing wallet button */}
+                                {publicKey && ["authority", "payer", "signer"].some((term) =>
+                                  account.name.toLowerCase().includes(term.toLowerCase())
+                                ) && (
+                                    <Button
+                                      variant="outline"
+                                      size="icon"
+                                      onClick={() => handleAccountChange(account.name, publicKey.toString())}
                                       title="Use connected wallet"
                                     >
                                       <Copy className="h-4 w-4" />

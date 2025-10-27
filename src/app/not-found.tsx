@@ -1,6 +1,5 @@
 "use client";
 
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { syne } from "@/fonts/fonts";
 import { cn } from "@/lib/utils";

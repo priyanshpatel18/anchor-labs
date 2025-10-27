@@ -1,23 +1,22 @@
 "use client";
 
-import React from "react";
 import { useJsonStore } from "@/stores/jsonStore";
 import useProgramStore from "@/stores/programStore";
 import { useRpcStore } from "@/stores/rpcStore";
 import { toast } from "sonner";
 // import { ProgramDetails } from "@/components/dashboard/program-details";
+import { useAnchorWallet } from "@solana/wallet-adapter-react";
 import {
   ArrowLeft,
-  Database,
-  FileJson,
-  ServerIcon,
-  Wallet,
   CheckCircle2,
   Code2,
+  Database,
+  FileJson,
   Layers,
+  ServerIcon,
+  Wallet,
 } from "lucide-react";
 import { Button } from "../ui/button";
-import { useAnchorWallet, useWallet } from "@solana/wallet-adapter-react";
 
 interface InitializationReviewStepProps {
   onBack: () => void;

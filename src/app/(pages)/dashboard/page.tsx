@@ -32,8 +32,6 @@ export default function Dashboard() {
   const idlJson = programDetails?.serializedIdl
     ? JSON.stringify(JSON.parse(programDetails.serializedIdl), null, 2)
     : "";
-  console.log(programDetails);
-
 
   const copyToClipboard = async (
     text: string,

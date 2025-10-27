@@ -3,9 +3,27 @@ import { Program, Idl, AnchorProvider } from "@coral-xyz/anchor";
 import { Connection, Commitment, Cluster } from "@solana/web3.js";
 import { AnchorWallet } from "@jup-ag/wallet-adapter";
 import { persist } from "zustand/middleware";
+import { IdlType } from "@coral-xyz/anchor/dist/cjs/idl";
 
 type AnyProgram = Program<Idl>;
 type CommitmentLevel = Commitment;
+
+
+export interface IdlTypeDef {
+  name: string;
+  type: {
+    kind: "struct" | "enum";
+    fields?: Array<{
+      name: string;
+      type: IdlType;
+    }>;
+    variants?: Array<{
+      name: string;
+      fields?: IdlType[];
+    }>;
+  };
+  docs?: string[];
+}
 
 export interface ProgramDetails {
   programId: string;
@@ -15,6 +33,7 @@ export interface ProgramDetails {
   commitment: CommitmentLevel;
   initializedAt: number;
   serializedIdl: string;
+  types: IdlTypeDef[];
 }
 
 interface ProgramError {
@@ -67,7 +86,7 @@ function createErrorObject(error: unknown, defaultName: string): ProgramError {
       stack: error.stack,
     };
   }
-  
+
   return {
     name: defaultName,
     message: typeof error === "string" ? error : String(error),
@@ -118,6 +137,7 @@ const useProgramStore = create<ProgramState>()(
             commitment,
             initializedAt: Date.now(),
             serializedIdl: JSON.stringify(idl),
+            types: (idl.types ? JSON.parse(JSON.stringify(idl.types)) : []) as IdlTypeDef[],
           };
 
           set({
@@ -201,10 +221,10 @@ const useProgramStore = create<ProgramState>()(
     {
       name: "anchor-studio-program",
       partialize: (state) =>
-        ({
-          programDetails: state.programDetails,
-          isInitialized: state.isInitialized,
-        } as PersistedState),
+      ({
+        programDetails: state.programDetails,
+        isInitialized: state.isInitialized,
+      } as PersistedState),
     }
   )
 );

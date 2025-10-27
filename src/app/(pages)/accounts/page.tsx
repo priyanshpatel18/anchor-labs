@@ -9,6 +9,7 @@ import { useAutoReinitialize } from "@/hooks/useAutoReinitialize";
 import useProgramStore from "@/stores/programStore";
 import { IdlAccount } from "@coral-xyz/anchor/dist/cjs/idl";
 import { useAnchorWallet } from "@solana/wallet-adapter-react";
+import { motion } from "framer-motion";
 import { AlertCircle, Database, Inbox, Loader2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
@@ -137,29 +138,54 @@ export default function AccountsPage() {
 
   if (accounts.length === 0) {
     return (
-      <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8"
+      >
         <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-xl bg-muted/20">
-          <div className="rounded-full bg-muted p-4 mb-4">
+          <motion.div 
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 200, damping: 15 }}
+            className="rounded-full bg-muted p-4 mb-4"
+          >
             <Inbox className="h-8 w-8 text-muted-foreground" />
-          </div>
+          </motion.div>
           <h2 className="text-xl font-semibold mb-2">No Account Types Defined</h2>
           <p className="text-muted-foreground text-center max-w-md">
             This program doesn&lsquo;t define any account types in its IDL. Account types are required to store and query on-chain data.
           </p>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+      className="w-full max-w-6xl mx-auto p-4 sm:p-6 lg:p-8"
+    >
       <div className="space-y-6">
         {/* Header Section */}
-        <div className="space-y-2">
+        <motion.div 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="space-y-2"
+        >
           <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-primary/10 p-2">
+            <motion.div 
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, type: "spring", stiffness: 200, damping: 15 }}
+              className="rounded-lg bg-primary/10 p-2"
+            >
               <Database className="h-5 w-5 text-primary" />
-            </div>
+            </motion.div>
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Program Accounts</h1>
               <p className="text-sm text-muted-foreground mt-1">
@@ -167,33 +193,45 @@ export default function AccountsPage() {
               </p>
             </div>
           </div>
-        </div>
+        </motion.div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="overflow-x-auto pb-2 -mx-1 px-1">
-            <TabsList className="inline-flex h-11 items-center justify-start rounded-lg bg-muted p-1 w-auto min-w-full sm:min-w-0">
-              {accounts.map((account) => (
-                <TabsTrigger
-                  key={account.name}
-                  value={account.name}
-                  className="text-sm font-medium px-4 py-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
-                >
-                  {account.name}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </div>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+        >
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <div className="overflow-x-auto pb-2 -mx-1 px-1">
+              <TabsList className="inline-flex h-11 items-center justify-start rounded-lg bg-muted p-1 w-auto min-w-full sm:min-w-0">
+                {accounts.map((account, index) => (
+                  <motion.div
+                    key={account.name}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3 + index * 0.05 }}
+                  >
+                    <TabsTrigger
+                      value={account.name}
+                      className="text-sm font-medium px-4 py-2 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
+                    >
+                      {account.name}
+                    </TabsTrigger>
+                  </motion.div>
+                ))}
+              </TabsList>
+            </div>
 
-          {accounts.map((account) => (
-            <TabsContent key={account.name} value={account.name}>
-              <AccountTabContent
-                account={account}
-                isActive={activeTab === account.name}
-              />
-            </TabsContent>
-          ))}
-        </Tabs>
+            {accounts.map((account) => (
+              <TabsContent key={account.name} value={account.name}>
+                <AccountTabContent
+                  account={account}
+                  isActive={activeTab === account.name}
+                />
+              </TabsContent>
+            ))}
+          </Tabs>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 }

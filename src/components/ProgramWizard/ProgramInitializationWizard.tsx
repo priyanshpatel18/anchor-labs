@@ -14,6 +14,7 @@ import React, { useEffect, useState } from "react";
 import IdlConfigurationStep from "./IdlConfigurationStep";
 import NetworkConnectionStep from "./NetworkConnectionStep";
 import InitializationReviewStep from "./InitializationReviewStep";
+import useProgramStore from "@/stores/programStore";
 
 interface WizardStep {
   id: number;
@@ -53,6 +54,7 @@ export default function ProgramInitializationWizard({
   const [activeStep, setActiveStep] = useState(1);
   const { reset: resetJsonStore, jsonData, isValid } = useJsonStore();
   const wallet = useAnchorWallet();
+  const { programDetails } = useProgramStore()
 
   useEffect(() => {
     resetJsonStore();
@@ -71,7 +73,7 @@ export default function ProgramInitializationWizard({
   const canNavigateToStep = (stepId: number): boolean => {
     if (stepId === 1) return true;
     if (stepId === 2) return Boolean(jsonData && isValid);
-    if (stepId === 3) return Boolean(wallet?.publicKey);
+    if (stepId === 3) return (Boolean(wallet?.publicKey) && !!programDetails);
     return false;
   };
 
@@ -101,20 +103,20 @@ export default function ProgramInitializationWizard({
                   <div className="space-y-0.5 flex items-center gap-2 justify-center mt-2">
                     <span
                       className={`flex h-9 w-9 items-center justify-center rounded-full transition-all ${isActive
-                          ? "bg-primary text-primary-foreground ring-2 ring-primary/20"
-                          : isCompleted
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground"
+                        ? "bg-primary text-primary-foreground ring-2 ring-primary/20"
+                        : isCompleted
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground"
                         }`}
                     >
                       {icon}
                     </span>
                     <StepperTitle
                       className={`transition-colors ${isActive
-                          ? "text-primary font-medium"
-                          : isCompleted
-                            ? "text-foreground"
-                            : "text-muted-foreground"
+                        ? "text-primary font-medium"
+                        : isCompleted
+                          ? "text-foreground"
+                          : "text-muted-foreground"
                         }`}
                     >
                       {title}

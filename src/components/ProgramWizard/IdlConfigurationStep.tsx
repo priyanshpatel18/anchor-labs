@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { JsonEditor } from "@/components/ui/json-editor";
 import { ArrowRight, Code2, FileJson, Upload } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 type IdlInputMethod = "editor" | "upload";
 
@@ -138,114 +139,167 @@ export default function IdlConfigurationStep({
   }, []);
 
   return (
-    <div className="flex h-full w-full flex-col">
-      <div className="mb-4">
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="flex h-full w-full flex-col"
+    >
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.1 }}
+        className="mb-4"
+      >
         <h2 className="text-2xl font-semibold tracking-tight">
           Program IDL Configuration
         </h2>
         <p className="text-muted-foreground">
           Provide your Anchor program Interface Definition Language file
         </p>
-      </div>
+      </motion.div>
 
-      <div className="flex mb-4">
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2 }}
+        className="flex mb-4"
+      >
         <div className="inline-flex h-10 items-center justify-center gap-1 rounded-md bg-muted p-1">
           <button
             onClick={() => setInputMethod("editor")}
-            className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${inputMethod === "editor"
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:bg-muted/80"
-              }`}
+            className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+              inputMethod === "editor"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:bg-muted/80"
+            }`}
           >
             <Code2 className="mr-2 h-4 w-4" />
             JSON Editor
           </button>
           <button
             onClick={() => setInputMethod("upload")}
-            className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${inputMethod === "upload"
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:bg-muted/80"
-              }`}
+            className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+              inputMethod === "upload"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:bg-muted/80"
+            }`}
           >
             <Upload className="mr-2 h-4 w-4" />
             Upload File
           </button>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="flex-1 min-h-0 h-full w-full flex">
-        {inputMethod === "editor" ? (
-          <div className="flex flex-col flex-1 rounded-lg border bg-card/50 shadow-sm">
-            <div className="border-b bg-muted/30 px-6 py-4">
-              <h3 className="text-lg font-medium">Edit IDL JSON</h3>
-              <p className="text-sm text-muted-foreground">
-                Paste or modify your Anchor program IDL directly below
-              </p>
-            </div>
-
-            <div className="flex-1 min-h-0 w-full overflow-hidden">
-              <JsonEditor />
-            </div>
-
-            <div className="border-t bg-muted/30 px-4 py-2 flex justify-end">
-              <div className="text-xs text-muted-foreground">
-                Use the Format button to beautify your JSON
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.3 }}
+        className="flex-1 min-h-0 h-full w-full flex"
+      >
+        <AnimatePresence mode="wait">
+          {inputMethod === "editor" ? (
+            <motion.div
+              key="editor"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.3 }}
+              className="flex flex-col flex-1 rounded-lg border bg-card/50 shadow-sm"
+            >
+              <div className="border-b bg-muted/30 px-6 py-4">
+                <h3 className="text-lg font-medium">Edit IDL JSON</h3>
+                <p className="text-sm text-muted-foreground">
+                  Paste or modify your Anchor program IDL directly below
+                </p>
               </div>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-1 flex-col overflow-hidden rounded-lg border bg-card/50 shadow-sm h-full">
-            <div className="border-b bg-muted/30 px-6 py-4">
-              <h3 className="text-lg font-medium">Upload IDL File</h3>
-              <p className="text-sm text-muted-foreground">
-                Upload your Anchor program IDL JSON file to begin
-              </p>
-            </div>
-            <div className="p-6 flex-1">
-              <div
-                className={`flex h-full flex-col items-center justify-center rounded-lg border border-dashed p-12 transition-colors cursor-pointer ${isDragActive
-                  ? "border-primary/50 bg-primary/20"
-                  : "border-primary/20 bg-primary/5 hover:border-primary/30 hover:bg-primary/10"
+
+              <div className="flex-1 min-h-0 w-full overflow-hidden">
+                <JsonEditor />
+              </div>
+
+              <div className="border-t bg-muted/30 px-4 py-2 flex justify-end">
+                <div className="text-xs text-muted-foreground">
+                  Use the Format button to beautify your JSON
+                </div>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="upload"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+              className="flex flex-1 flex-col overflow-hidden rounded-lg border bg-card/50 shadow-sm h-full"
+            >
+              <div className="border-b bg-muted/30 px-6 py-4">
+                <h3 className="text-lg font-medium">Upload IDL File</h3>
+                <p className="text-sm text-muted-foreground">
+                  Upload your Anchor program IDL JSON file to begin
+                </p>
+              </div>
+              <div className="p-6 flex-1">
+                <motion.div
+                  animate={isDragActive ? { scale: 1.02 } : { scale: 1 }}
+                  transition={{ duration: 0.2 }}
+                  className={`flex h-full flex-col items-center justify-center rounded-lg border border-dashed p-12 transition-colors cursor-pointer ${
+                    isDragActive
+                      ? "border-primary/50 bg-primary/20"
+                      : "border-primary/20 bg-primary/5 hover:border-primary/30 hover:bg-primary/10"
                   }`}
-                onClick={triggerFileInput}
-                onDragEnter={handleDragEnter}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleFileDrop}
-              >
-                <input
-                  type="file"
-                  id="idl-file-input"
-                  accept=".json,application/json"
-                  className="hidden"
-                  ref={fileInputRef}
-                  onChange={handleFileInputChange}
-                />
-                <div className="mb-4 rounded-full bg-primary/10 p-3">
-                  <FileJson className="h-8 w-8 text-primary" />
-                </div>
-                <div className="mb-2 text-xl font-medium">
-                  Drop your IDL file here or click to browse
-                </div>
-                <div className="mb-6 text-sm text-muted-foreground">
-                  Supports .json files up to {MAX_FILE_SIZE_MB}MB
-                </div>
-                <Button variant="outline" className="gap-2 pointer-events-none">
-                  <Upload className="h-4 w-4" />
-                  Select JSON File
-                </Button>
+                  onClick={triggerFileInput}
+                  onDragEnter={handleDragEnter}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleFileDrop}
+                >
+                  <input
+                    type="file"
+                    id="idl-file-input"
+                    accept=".json,application/json"
+                    className="hidden"
+                    ref={fileInputRef}
+                    onChange={handleFileInputChange}
+                  />
+                  <motion.div 
+                    animate={{ 
+                      y: isDragActive ? -5 : 0,
+                      scale: isDragActive ? 1.1 : 1 
+                    }}
+                    transition={{ duration: 0.2 }}
+                    className="mb-4 rounded-full bg-primary/10 p-3"
+                  >
+                    <FileJson className="h-8 w-8 text-primary" />
+                  </motion.div>
+                  <div className="mb-2 text-xl font-medium">
+                    Drop your IDL file here or click to browse
+                  </div>
+                  <div className="mb-6 text-sm text-muted-foreground">
+                    Supports .json files up to {MAX_FILE_SIZE_MB}MB
+                  </div>
+                  <Button variant="outline" className="gap-2 pointer-events-none">
+                    <Upload className="h-4 w-4" />
+                    Select JSON File
+                  </Button>
+                </motion.div>
               </div>
-            </div>
-          </div>
-        )}
-      </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
 
-      <div className="mt-6 flex justify-end">
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.4 }}
+        className="mt-6 flex justify-end"
+      >
         <Button onClick={onNext} disabled={!isValid} className="gap-2">
           Continue
           <ArrowRight className="h-4 w-4" />
         </Button>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

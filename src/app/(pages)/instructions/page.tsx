@@ -49,6 +49,7 @@ import {
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { motion, AnimatePresence } from "framer-motion";
 
 type SeedType = "string" | "publicKey" | "u64" | "u32" | "u16" | "u8";
 
@@ -58,6 +59,17 @@ interface SeedInput {
   value: string;
   label: string;
 }
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.05,
+    },
+  },
+};
 
 export default function InstructionBuilderPage() {
   const { program, programDetails } = useProgramStore();
@@ -439,22 +451,41 @@ export default function InstructionBuilderPage() {
 
   if (!instructions || instructions.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-center h-64"
+      >
         <p className="text-muted-foreground">
           No instructions found in the program IDL.
         </p>
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="w-full max-w-6xl mx-auto p-4 sm:p-6 lg:p-8"
+    >
       <div className="space-y-6">
-        <div className="space-y-2">
+        <motion.div className="space-y-2">
           <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-primary/10 p-2">
+            <motion.div
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{
+                type: "spring",
+                stiffness: 150,
+                damping: 12,
+                delay: 0.1,
+              }}
+              className="rounded-lg bg-primary/10 p-2"
+            >
               <Zap className="h-5 w-5 text-primary" />
-            </div>
+            </motion.div>
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Instruction Builder</h1>
               <p className="text-sm text-muted-foreground mt-1">
@@ -463,399 +494,436 @@ export default function InstructionBuilderPage() {
               </p>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {formattedInstructions.length > 0 ? (
-          <Tabs
-            value={selectedIx}
-            onValueChange={setSelectedIx}
-            defaultValue={initialSelectedIx}
-            className="w-full"
-          >
-            <div className="overflow-x-auto">
-              <TabsList className="inline-flex h-auto p-1">
-                {formattedInstructions.map((ix) => (
-                  <TabsTrigger
-                    key={ix.name}
-                    value={ix.name}
-                    className="text-xs sm:text-sm px-2 py-1.5 sm:px-3 sm:py-2"
+          <motion.div>
+            <Tabs
+              value={selectedIx}
+              onValueChange={setSelectedIx}
+              defaultValue={initialSelectedIx}
+              className="w-full"
+            >
+              <div className="overflow-x-auto">
+                <TabsList className="inline-flex h-auto p-1">
+                  {formattedInstructions.map((ix, index) => (
+                    <motion.div
+                      key={ix.name}
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.15 + index * 0.05 }}
+                    >
+                      <TabsTrigger
+                        value={ix.name}
+                        className="text-xs sm:text-sm px-2 py-1.5 sm:px-3 sm:py-2"
+                      >
+                        {ix.displayName}
+                      </TabsTrigger>
+                    </motion.div>
+                  ))}
+                </TabsList>
+              </div>
+
+              {/* Render content for ALL instructions */}
+              {formattedInstructions.map((formattedIx) => {
+                const currentInstruction = instructions?.find((ix) => ix.name === formattedIx.name);
+
+                if (!currentInstruction) return null;
+
+                return (
+                  <TabsContent
+                    key={currentInstruction.name}
+                    value={currentInstruction.name}
+                    className="mt-4 flex flex-col flex-1 overflow-hidden"
                   >
-                    {ix.displayName}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </div>
-
-            {/* Render content for the selected instruction */}
-            {instruction && (
-              <TabsContent
-                value={instruction.name}
-                className="mt-4 flex flex-col flex-1 overflow-hidden"
-              >
-                <Card className="w-full flex flex-col flex-1 overflow-hidden">
-                  <CardHeader className="flex-shrink-0">
-                    <div className="flex justify-between items-start gap-4">
-                      <div className="flex-1 min-w-0">
-                        <CardTitle className="text-xl font-semibold">
-                          {instruction.name.charAt(0).toUpperCase() +
-                            instruction.name.slice(1).replace(/_/g, " ")}
-                        </CardTitle>
-                        {instruction.docs && instruction.docs[0] && (
-                          <CardDescription className="mt-1.5">
-                            {instruction.docs[0]}
-                          </CardDescription>
-                        )}
-                        <div className="flex items-center gap-2 mt-2">
-                          <Badge variant="outline" className="text-xs">
-                            {instruction.args.length} Args
-                          </Badge>
-                          <Badge variant="outline" className="text-xs">
-                            {instruction.accounts.length} Accounts
-                          </Badge>
-                        </div>
-                      </div>
-                      <TooltipProvider delayDuration={200}>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="flex-shrink-0">
-                              <Button
-                                onClick={handleSubmit}
-                                disabled={
-                                  !isFormValid || isLoading || !publicKey
-                                }
-                                size="lg"
-                                className="gap-2 px-6 font-semibold shadow-md"
-                              >
-                                {isLoading ? (
-                                  <>
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    Executing...
-                                  </>
-                                ) : !publicKey ? (
-                                  <>
-                                    <WalletIcon className="h-4 w-4" />
-                                    Connect Wallet
-                                  </>
-                                ) : (
-                                  <>
-                                    <Rocket className="h-4 w-4" />
-                                    Execute
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                          </TooltipTrigger>
-                          {!publicKey ? (
-                            <TooltipContent>
-                              <p>Connect your wallet to execute.</p>
-                            </TooltipContent>
-                          ) : !isFormValid ? (
-                            <TooltipContent>
-                              <p>Please fill in all required fields.</p>
-                            </TooltipContent>
-                          ) : null}
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="flex-1 overflow-y-auto px-6 pt-6 pb-6 space-y-6 min-h-0">
-                    {/* Arguments Section */}
-                    {instruction.args.length > 0 && (
-                      <div>
-                        <div className="flex items-center mb-4">
-                          <Code className="h-5 w-5 mr-2 text-primary" />
-                          <h3 className="text-lg font-medium">Arguments</h3>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          {instruction.args.map((arg) => {
-                            const resolveType = (type: IdlType): IdlType | { kind: "struct" | "enum"; fields?: Array<{ name: string; type: unknown }>; variants?: Array<{ name: string; fields?: unknown[] }> } => {
-                              // Handle option types: {option: {defined: {name: "TypeName"}}}
-                              if (typeof type === "object" && "option" in type) {
-                                type = type.option;
-                              }
-
-                              if (typeof type === "object" && "defined" in type) {
-                                // Handle both {defined: "TypeName"} and {defined: {name: "TypeName"}}
-                                let typeName: string;
-
-                                if (typeof type.defined === "string") {
-                                  typeName = type.defined;
-                                } else if (typeof type.defined === "object" && "name" in type.defined) {
-                                  typeName = type.defined.name;
-                                } else {
-                                  return type;
-                                }
-
-                                // Find the type definition in programDetails.types
-                                const definedType = programDetails?.types?.find(
-                                  (t) => t.name.toLowerCase() === typeName.toLowerCase()
-                                );
-
-                                return definedType?.type || type;
-                              }
-                              return type;
-                            };
-
-                            const resolvedType = resolveType(arg.type);
-                            const isEnum = typeof resolvedType === "object" &&
-                              "kind" in resolvedType &&
-                              resolvedType.kind === "enum";
-
-                            const getSelectedEnumVariant = (value: unknown): string => {
-                              if (typeof value === "object" && value !== null) {
-                                const keys = Object.keys(value);
-                                return keys.length > 0 ? keys[0] : "";
-                              }
-                              return "";
-                            };
-
-                            return (
-                              <div key={arg.name} className="space-y-2 bg-muted/40 p-4 rounded-lg">
-                                <div className="flex items-center justify-between">
-                                  <Label htmlFor={`arg-${arg.name}`} className="font-medium">
-                                    {arg.name}
-                                  </Label>
-                                  <Badge variant="outline" className="font-mono text-xs">
-                                    {isEnum
-                                      ? "enum"
-                                      : typeof arg.type === "object" && "option" in arg.type
-                                        ? `optional ${typeof arg.type.option === "string" ? arg.type.option : "type"}`
-                                        : typeof arg.type === "string"
-                                          ? arg.type
-                                          : JSON.stringify(arg.type)}
-                                  </Badge>
-                                </div>
-
-                                {isEnum ? (
-                                  <Select
-                                    value={getSelectedEnumVariant(args[arg.name])}
-                                    onValueChange={(value) => handleArgChange(arg.name, { [value]: {} })}
-                                  >
-                                    <SelectTrigger>
-                                      <SelectValue placeholder={`Select ${arg.name}`} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {(typeof resolvedType === "object" &&
-                                        "variants" in resolvedType &&
-                                        Array.isArray(resolvedType.variants)
-                                        ? resolvedType.variants
-                                        : []
-                                      ).map((variant: { name: string; fields?: unknown[] }) => (
-                                        <SelectItem key={variant.name} value={variant.name}>
-                                          {variant.name}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                ) : (
-                                  <TypeInput
-                                    type={arg.type}
-                                    value={args[arg.name] as string | number | readonly string[] | undefined}
-                                    onChange={(value: unknown) => handleArgChange(arg.name, value)}
-                                    placeholder={`Enter ${arg.name}`}
-                                    className="mt-1.5"
-                                  />
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {instruction.args.length > 0 &&
-                      instruction.accounts.length > 0 && (
-                        <Separator className="my-6" />
-                      )}
-
-                    {instruction.accounts.length > 0 && (
-                      <div>
-                        <div className="flex items-center mb-4">
-                          <Terminal className="h-5 w-5 mr-2 text-primary" />
-                          <h3 className="text-lg font-medium">Accounts</h3>
-                        </div>
-                        <div className="space-y-4">
-                          {instruction.accounts.map((account) => (
-                            <div
-                              key={account.name}
-                              className="bg-muted/40 p-4 rounded-lg space-y-2"
-                            >
-                              <div className="flex items-center justify-between flex-wrap gap-2">
-                                <Label
-                                  htmlFor={`account-${account.name}`}
-                                  className="font-medium"
-                                >
-                                  {account.name}
-                                </Label>
-                                <div className="flex gap-1.5">
-                                  {"signer" in account && account.signer && (
-                                    <Badge
-                                      variant="secondary"
-                                      className="font-normal text-xs"
-                                    >
-                                      Signer
-                                    </Badge>
+                    <AnimatePresence mode="wait">
+                      {selectedIx === currentInstruction.name && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <Card className="w-full flex flex-col flex-1 overflow-hidden">
+                            <CardHeader className="flex-shrink-0">
+                              <div className="flex justify-between items-start gap-4">
+                                <div className="flex-1 min-w-0">
+                                  <CardTitle className="text-xl font-semibold">
+                                    {currentInstruction.name.charAt(0).toUpperCase() +
+                                      currentInstruction.name.slice(1).replace(/_/g, " ")}
+                                  </CardTitle>
+                                  {currentInstruction.docs && currentInstruction.docs[0] && (
+                                    <CardDescription className="mt-1.5">
+                                      {currentInstruction.docs[0]}
+                                    </CardDescription>
                                   )}
-                                  {"writable" in account &&
-                                    account.writable && (
-                                      <Badge
-                                        variant="default"
-                                        className="font-normal text-xs"
-                                      >
-                                        Mutable
-                                      </Badge>
-                                    )}
-                                  {"optional" in account &&
-                                    account.optional && (
-                                      <Badge
-                                        variant="outline"
-                                        className="font-normal text-xs"
-                                      >
-                                        Optional
-                                      </Badge>
-                                    )}
+                                  <div className="flex items-center gap-2 mt-2">
+                                    <Badge variant="outline" className="text-xs">
+                                      {currentInstruction.args.length} Args
+                                    </Badge>
+                                    <Badge variant="outline" className="text-xs">
+                                      {currentInstruction.accounts.length} Accounts
+                                    </Badge>
+                                  </div>
                                 </div>
-                              </div>
-                              <div className="flex gap-2">
-                                <Input
-                                  id={`account-${account.name}`}
-                                  value={accounts[account.name] || ""}
-                                  onChange={(e) =>
-                                    handleAccountChange(account.name, e.target.value)
-                                  }
-                                  placeholder={`Enter ${account.name} public key`}
-                                  className="font-mono text-sm flex-1"
-                                />
-
-                                {/* Derive PDA Button */}
-                                <Dialog open={pdaDialogOpen === account.name} onOpenChange={(open) => setPdaDialogOpen(open ? account.name : null)}>
-                                  <DialogTrigger asChild>
-                                    <Button
-                                      variant="outline"
-                                      size="icon"
-                                      title="Derive PDA"
-                                    >
-                                      <Hash className="h-4 w-4" />
-                                    </Button>
-                                  </DialogTrigger>
-                                  <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                                    <DialogHeader>
-                                      <DialogTitle>Derive PDA for {account.name}</DialogTitle>
-                                      <DialogDescription>
-                                        Configure seeds to derive a Program Derived Address
-                                      </DialogDescription>
-                                    </DialogHeader>
-
-                                    <div className="space-y-4 py-4">
-                                      {pdaSeeds.map((seed, index) => (
-                                        <div key={seed.id} className="flex flex-col gap-3 p-4 border rounded-lg bg-muted/20">
-                                          <div className="flex items-center justify-between">
-                                            <Label className="text-sm font-medium">Seed {index + 1}</Label>
-                                            {pdaSeeds.length > 1 && (
-                                              <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-7 text-xs text-red-600"
-                                                onClick={() => removePdaSeed(seed.id)}
-                                              >
-                                                Remove
-                                              </Button>
-                                            )}
-                                          </div>
-
-                                          <div className="grid grid-cols-2 gap-3">
-                                            <div className="space-y-2">
-                                              <Label className="text-xs">Type</Label>
-                                              <Select
-                                                value={seed.type}
-                                                onValueChange={(value) => updatePdaSeed(seed.id, "type", value)}
-                                              >
-                                                <SelectTrigger className="h-9">
-                                                  <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                  <SelectItem value="string">String</SelectItem>
-                                                  <SelectItem value="publicKey">Public Key</SelectItem>
-                                                  <SelectItem value="u64">u64</SelectItem>
-                                                  <SelectItem value="u32">u32</SelectItem>
-                                                  <SelectItem value="u16">u16</SelectItem>
-                                                  <SelectItem value="u8">u8</SelectItem>
-                                                </SelectContent>
-                                              </Select>
-                                            </div>
-
-                                            <div className="space-y-2">
-                                              <Label className="text-xs">Value</Label>
-                                              <Input
-                                                placeholder={seed.type === "string" ? "e.g., account" : seed.type === "publicKey" ? "Base58 address" : "Number"}
-                                                value={seed.value}
-                                                onChange={(e) => updatePdaSeed(seed.id, "value", e.target.value)}
-                                                className="h-9 font-mono text-sm"
-                                              />
-                                            </div>
-                                          </div>
-                                        </div>
-                                      ))}
-
-                                      <div className="flex gap-2">
-                                        <Button variant="outline" size="sm" onClick={addPdaSeed}>
-                                          Add Seed
-                                        </Button>
+                                <TooltipProvider delayDuration={200}>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div className="flex-shrink-0">
                                         <Button
-                                          onClick={() => derivePDAForAccount(account.name)}
-                                          className="flex-1"
-                                          disabled={pdaSeeds.some((s) => !s.value.trim())}
+                                          onClick={handleSubmit}
+                                          disabled={
+                                            !isFormValid || isLoading || !publicKey
+                                          }
+                                          size="lg"
+                                          className="gap-2 px-6 font-semibold shadow-md"
                                         >
-                                          <Hash className="h-4 w-4 mr-2" />
-                                          Derive & Fill
+                                          {isLoading ? (
+                                            <>
+                                              <Loader2 className="h-4 w-4 animate-spin" />
+                                              Executing...
+                                            </>
+                                          ) : !publicKey ? (
+                                            <>
+                                              <WalletIcon className="h-4 w-4" />
+                                              Connect Wallet
+                                            </>
+                                          ) : (
+                                            <>
+                                              <Rocket className="h-4 w-4" />
+                                              Execute
+                                            </>
+                                          )}
                                         </Button>
                                       </div>
-                                    </div>
-                                  </DialogContent>
-                                </Dialog>
-
-                                {/* Existing wallet button */}
-                                {publicKey && ["authority", "payer", "signer"].some((term) =>
-                                  account.name.toLowerCase().includes(term.toLowerCase())
-                                ) && (
-                                    <Button
-                                      variant="outline"
-                                      size="icon"
-                                      onClick={() => handleAccountChange(account.name, publicKey.toString())}
-                                      title="Use connected wallet"
-                                    >
-                                      <Copy className="h-4 w-4" />
-                                    </Button>
-                                  )}
+                                    </TooltipTrigger>
+                                    {!publicKey ? (
+                                      <TooltipContent>
+                                        <p>Connect your wallet to execute.</p>
+                                      </TooltipContent>
+                                    ) : !isFormValid ? (
+                                      <TooltipContent>
+                                        <p>Please fill in all required fields.</p>
+                                      </TooltipContent>
+                                    ) : null}
+                                  </Tooltip>
+                                </TooltipProvider>
                               </div>
-                              {"docs" in account &&
-                                account.docs &&
-                                account.docs[0] && (
-                                  <p className="text-xs text-muted-foreground">
-                                    {account.docs[0]}
-                                  </p>
-                                )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            )}
+                            </CardHeader>
+                            <CardContent className="flex-1 overflow-y-auto px-6 pt-6 pb-6 space-y-6 min-h-0">
+                              {/* Arguments Section */}
+                              {currentInstruction.args.length > 0 && (
+                                <motion.div
+                                  initial={{ opacity: 0 }}
+                                  animate={{ opacity: 1 }}
+                                  transition={{ delay: 0.1 }}
+                                >
+                                  <div className="flex items-center mb-4">
+                                    <Code className="h-5 w-5 mr-2 text-primary" />
+                                    <h3 className="text-lg font-medium">Arguments</h3>
+                                  </div>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {currentInstruction.args.map((arg, index) => {
+                                      const resolveType = (type: IdlType): IdlType | { kind: "struct" | "enum"; fields?: Array<{ name: string; type: unknown }>; variants?: Array<{ name: string; fields?: unknown[] }> } => {
+                                        if (typeof type === "object" && "option" in type) {
+                                          type = type.option;
+                                        }
 
-            {/* Fallback if no instruction is selected but tabs are present */}
-            {!instruction && formattedInstructions.length > 0 && (
-              <Card className="mt-4 flex items-center justify-center h-[200px]">
-                <CardContent>
-                  <p className="text-muted-foreground">
-                    Select an instruction to view details.
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-          </Tabs>
+                                        if (typeof type === "object" && "defined" in type) {
+                                          let typeName: string;
+
+                                          if (typeof type.defined === "string") {
+                                            typeName = type.defined;
+                                          } else if (typeof type.defined === "object" && "name" in type.defined) {
+                                            typeName = type.defined.name;
+                                          } else {
+                                            return type;
+                                          }
+
+                                          const definedType = programDetails?.types?.find(
+                                            (t) => t.name.toLowerCase() === typeName.toLowerCase()
+                                          );
+
+                                          return definedType?.type || type;
+                                        }
+                                        return type;
+                                      };
+
+                                      const resolvedType = resolveType(arg.type);
+                                      const isEnum = typeof resolvedType === "object" &&
+                                        "kind" in resolvedType &&
+                                        resolvedType.kind === "enum";
+
+                                      const getSelectedEnumVariant = (value: unknown): string => {
+                                        if (typeof value === "object" && value !== null) {
+                                          const keys = Object.keys(value);
+                                          return keys.length > 0 ? keys[0] : "";
+                                        }
+                                        return "";
+                                      };
+
+                                      return (
+                                        <motion.div
+                                          key={arg.name}
+                                          initial={{ opacity: 0, y: 10 }}
+                                          animate={{ opacity: 1, y: 0 }}
+                                          transition={{ delay: 0.15 + index * 0.05 }}
+                                          className="space-y-2 bg-muted/40 p-4 rounded-lg"
+                                        >
+                                          <div className="flex items-center justify-between">
+                                            <Label htmlFor={`arg-${arg.name}`} className="font-medium">
+                                              {arg.name}
+                                            </Label>
+                                            <Badge variant="outline" className="font-mono text-xs">
+                                              {isEnum
+                                                ? "enum"
+                                                : typeof arg.type === "object" && "option" in arg.type
+                                                  ? `optional ${typeof arg.type.option === "string" ? arg.type.option : "type"}`
+                                                  : typeof arg.type === "string"
+                                                    ? arg.type
+                                                    : JSON.stringify(arg.type)}
+                                            </Badge>
+                                          </div>
+
+                                          {isEnum ? (
+                                            <Select
+                                              value={getSelectedEnumVariant(args[arg.name])}
+                                              onValueChange={(value) => handleArgChange(arg.name, { [value]: {} })}
+                                            >
+                                              <SelectTrigger>
+                                                <SelectValue placeholder={`Select ${arg.name}`} />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                {(typeof resolvedType === "object" &&
+                                                  "variants" in resolvedType &&
+                                                  Array.isArray(resolvedType.variants)
+                                                  ? resolvedType.variants
+                                                  : []
+                                                ).map((variant: { name: string; fields?: unknown[] }) => (
+                                                  <SelectItem key={variant.name} value={variant.name}>
+                                                    {variant.name}
+                                                  </SelectItem>
+                                                ))}
+                                              </SelectContent>
+                                            </Select>
+                                          ) : (
+                                            <TypeInput
+                                              type={arg.type}
+                                              value={args[arg.name] as string | number | readonly string[] | undefined}
+                                              onChange={(value: unknown) => handleArgChange(arg.name, value)}
+                                              placeholder={`Enter ${arg.name}`}
+                                              className="mt-1.5 transition-all duration-200 focus-within:shadow-sm"
+                                            />
+                                          )}
+                                        </motion.div>
+                                      );
+                                    })}
+                                  </div>
+                                </motion.div>
+                              )}
+
+                              {currentInstruction.args.length > 0 &&
+                                currentInstruction.accounts.length > 0 && (
+                                  <Separator className="my-6" />
+                                )}
+
+                              {currentInstruction.accounts.length > 0 && (
+                                <motion.div
+                                  initial={{ opacity: 0 }}
+                                  animate={{ opacity: 1 }}
+                                  transition={{ delay: 0.2 }}
+                                >
+                                  <div className="flex items-center mb-4">
+                                    <Terminal className="h-5 w-5 mr-2 text-primary" />
+                                    <h3 className="text-lg font-medium">Accounts</h3>
+                                  </div>
+                                  <div className="space-y-4">
+                                    {currentInstruction.accounts.map((account, index) => (
+                                      <motion.div
+                                        key={account.name}
+                                        initial={{ opacity: 0, x: -10 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: 0.25 + index * 0.05 }}
+                                        className="bg-muted/40 p-4 rounded-lg space-y-2"
+                                      >
+                                        <div className="flex items-center justify-between flex-wrap gap-2">
+                                          <Label
+                                            htmlFor={`account-${account.name}`}
+                                            className="font-medium"
+                                          >
+                                            {account.name}
+                                          </Label>
+                                          <div className="flex gap-1.5">
+                                            {"signer" in account && account.signer && (
+                                              <Badge
+                                                variant="secondary"
+                                                className="font-normal text-xs"
+                                              >
+                                                Signer
+                                              </Badge>
+                                            )}
+                                            {"writable" in account &&
+                                              account.writable && (
+                                                <Badge
+                                                  variant="default"
+                                                  className="font-normal text-xs"
+                                                >
+                                                  Mutable
+                                                </Badge>
+                                              )}
+                                            {"optional" in account &&
+                                              account.optional && (
+                                                <Badge
+                                                  variant="outline"
+                                                  className="font-normal text-xs"
+                                                >
+                                                  Optional
+                                                </Badge>
+                                              )}
+                                          </div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                          <Input
+                                            id={`account-${account.name}`}
+                                            value={accounts[account.name] || ""}
+                                            onChange={(e) =>
+                                              handleAccountChange(account.name, e.target.value)
+                                            }
+                                            placeholder={`Enter ${account.name} public key`}
+                                            className="font-mono text-sm flex-1 transition-all duration-200 focus:shadow-sm"
+                                          />
+
+                                          <Dialog open={pdaDialogOpen === account.name} onOpenChange={(open) => setPdaDialogOpen(open ? account.name : null)}>
+                                            <DialogTrigger asChild>
+                                              <Button
+                                                variant="outline"
+                                                size="icon"
+                                                title="Derive PDA"
+                                              >
+                                                <Hash className="h-4 w-4" />
+                                              </Button>
+                                            </DialogTrigger>
+                                            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                                              <DialogHeader>
+                                                <DialogTitle>Derive PDA for {account.name}</DialogTitle>
+                                                <DialogDescription>
+                                                  Configure seeds to derive a Program Derived Address
+                                                </DialogDescription>
+                                              </DialogHeader>
+
+                                              <div className="space-y-4 py-4">
+                                                <AnimatePresence mode="popLayout">
+                                                  {pdaSeeds.map((seed, seedIndex) => (
+                                                    <motion.div
+                                                      key={seed.id}
+                                                      initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                      exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                                                      transition={{ duration: 0.2 }}
+                                                      layout
+                                                      className="flex flex-col gap-3 p-4 border rounded-lg bg-muted/20"
+                                                    >
+                                                      <div className="flex items-center justify-between">
+                                                        <Label className="text-sm font-medium">Seed {seedIndex + 1}</Label>
+                                                        {pdaSeeds.length > 1 && (
+                                                          <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-7 text-xs text-red-600"
+                                                            onClick={() => removePdaSeed(seed.id)}
+                                                          >
+                                                            Remove
+                                                          </Button>
+                                                        )}
+                                                      </div>
+
+                                                      <div className="grid grid-cols-2 gap-3">
+                                                        <div className="space-y-2">
+                                                          <Label className="text-xs">Type</Label>
+                                                          <Select
+                                                            value={seed.type}
+                                                            onValueChange={(value) => updatePdaSeed(seed.id, "type", value)}
+                                                          >
+                                                            <SelectTrigger className="h-9">
+                                                              <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                              <SelectItem value="string">String</SelectItem>
+                                                              <SelectItem value="publicKey">Public Key</SelectItem>
+                                                              <SelectItem value="u64">u64</SelectItem>
+                                                              <SelectItem value="u32">u32</SelectItem>
+                                                              <SelectItem value="u16">u16</SelectItem>
+                                                              <SelectItem value="u8">u8</SelectItem>
+                                                            </SelectContent>
+                                                          </Select>
+                                                        </div>
+
+                                                        <div className="space-y-2">
+                                                          <Label className="text-xs">Value</Label>
+                                                          <Input
+                                                            placeholder={seed.type === "string" ? "e.g., account" : seed.type === "publicKey" ? "Base58 address" : "Number"}
+                                                            value={seed.value}
+                                                            onChange={(e) => updatePdaSeed(seed.id, "value", e.target.value)}
+                                                            className="h-9 font-mono text-sm"
+                                                          />
+                                                        </div>
+                                                      </div>
+                                                    </motion.div>
+                                                  ))}
+                                                </AnimatePresence>
+
+                                                <div className="flex gap-2">
+                                                  <Button variant="outline" size="sm" onClick={addPdaSeed}>
+                                                    Add Seed
+                                                  </Button>
+                                                  <Button
+                                                    onClick={() => derivePDAForAccount(account.name)}
+                                                    className="flex-1"
+                                                    disabled={pdaSeeds.some((s) => !s.value.trim())}
+                                                  >
+                                                    <Hash className="h-4 w-4 mr-2" />
+                                                    Derive & Fill
+                                                  </Button>
+                                                </div>
+                                              </div>
+                                            </DialogContent>
+                                          </Dialog>
+
+                                          {publicKey && ["authority", "payer", "signer"].some((term) =>
+                                            account.name.toLowerCase().includes(term.toLowerCase())
+                                          ) && (
+                                              <Button
+                                                variant="outline"
+                                                size="icon"
+                                                onClick={() => handleAccountChange(account.name, publicKey.toString())}
+                                                title="Use connected wallet"
+                                              >
+                                                <Copy className="h-4 w-4" />
+                                              </Button>
+                                            )}
+                                        </div>
+                                        {"docs" in account &&
+                                          account.docs &&
+                                          account.docs[0] && (
+                                            <p className="text-xs text-muted-foreground">
+                                              {account.docs[0]}
+                                            </p>
+                                          )}
+                                      </motion.div>
+                                    ))}
+                                  </div>
+                                </motion.div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </TabsContent>
+                );
+              })}
+            </Tabs>
+          </motion.div>
         ) : (
           <Card className="flex items-center justify-center h-[200px]">
             <CardContent>
@@ -867,51 +935,110 @@ export default function InstructionBuilderPage() {
         )}
 
         {/* Success Toast Notification */}
-        {result && showResult && (
-          <div className="fixed top-6 right-6 z-50 w-full max-w-sm">
-            <Card className="border-green-500/20 bg-green-500/5 shadow-lg">
-              <CardHeader className="pb-2 flex flex-row items-center justify-between">
-                <div className="flex items-center text-base font-medium text-green-600">
-                  <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />
-                  Transaction Successful
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setShowResult(false)}
-                >
-                  <XCircle className="h-4 w-4 text-green-500" />
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Signature:</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 gap-1"
-                        asChild
-                      >
-                        <Link href={`${getExplorerUrl(result.signature, "solana", programDetails.rpcUrl)}`} target="_blank">
-                          <span className="text-xs">View Transaction</span>
-                          <ExternalLink className="h-3 w-3" />
-                        </Link>
-                      </Button>
+        <AnimatePresence>
+          {result && showResult && (
+            <motion.div
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 200, damping: 20 }}
+              className="fixed top-6 right-6 z-50 w-full max-w-sm"
+            >
+              <Card className="border-green-500/20 bg-green-500/5 shadow-lg">
+                <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                  <div className="flex items-center text-base font-medium text-green-600">
+                    <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />
+                    Transaction Successful
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowResult(false)}
+                  >
+                    <XCircle className="h-4 w-4 text-green-500" />
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Signature:</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 gap-1"
+                          asChild
+                        >
+                          <Link href={`${getExplorerUrl(result.signature, "solana", programDetails.rpcUrl)}`} target="_blank">
+                            <span className="text-xs">View Transaction</span>
+                            <ExternalLink className="h-3 w-3" />
+                          </Link>
+                        </Button>
+                      </div>
+                      <div className="p-3 bg-background rounded-md overflow-x-auto flex items-center gap-2 border">
+                        <code className="text-xs break-all flex-1">
+                          {result?.signature}
+                        </code>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => {
+                            if (result?.signature) {
+                              navigator.clipboard.writeText(result.signature);
+                              toast.success("Signature copied to clipboard");
+                            }
+                          }}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="p-3 bg-background rounded-md overflow-x-auto flex items-center gap-2 border">
-                      <code className="text-xs break-all flex-1">
-                        {result?.signature}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Error Toast Notification */}
+        <AnimatePresence>
+          {error && showError && (
+            <motion.div
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 200, damping: 20 }}
+              className="fixed top-6 right-6 z-50 w-full max-w-sm"
+            >
+              <Card className="border-destructive bg-destructive/10 shadow-lg">
+                <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                  <div className="flex items-center text-base font-medium text-destructive">
+                    <XCircle className="h-4 w-4 mr-2 text-destructive" />
+                    Transaction Failed
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowError(false)}
+                  >
+                    <XCircle className="h-4 w-4 text-destructive" />
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <div className="p-3 bg-background rounded-md border">
+                    <div className="flex items-start justify-between gap-2">
+                      <code className="text-xs break-all text-destructive">
+                        {error}
                       </code>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-6 w-6 p-0"
+                        className="h-6 w-6 p-0 flex-shrink-0"
                         onClick={() => {
-                          if (result?.signature) {
-                            navigator.clipboard.writeText(result.signature);
-                            toast.success("Signature copied to clipboard");
+                          if (error) {
+                            navigator.clipboard.writeText(error);
+                            toast.success("Error copied to clipboard");
                           }
                         }}
                       >
@@ -919,55 +1046,12 @@ export default function InstructionBuilderPage() {
                       </Button>
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* Error Toast Notification */}
-        {error && showError && (
-          <div className="fixed top-6 right-6 z-50 w-full max-w-sm">
-            <Card className="border-destructive bg-destructive/10 shadow-lg">
-              <CardHeader className="pb-2 flex flex-row items-center justify-between">
-                <div className="flex items-center text-base font-medium text-destructive">
-                  <XCircle className="h-4 w-4 mr-2 text-destructive" />
-                  Transaction Failed
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setShowError(false)}
-                >
-                  <XCircle className="h-4 w-4 text-destructive" />
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <div className="p-3 bg-background rounded-md border">
-                  <div className="flex items-start justify-between gap-2">
-                    <code className="text-xs break-all text-destructive">
-                      {error}
-                    </code>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0 flex-shrink-0"
-                      onClick={() => {
-                        if (error) {
-                          navigator.clipboard.writeText(error);
-                          toast.success("Error copied to clipboard");
-                        }
-                      }}
-                    >
-                      <Copy className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-    </div>
+    </motion.div>
   );
 }

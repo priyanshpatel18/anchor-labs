@@ -23,6 +23,7 @@ import { useAutoReinitialize } from "@/hooks/useAutoReinitialize";
 import useProgramStore from "@/stores/programStore";
 import { useAnchorWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertCircle,
   Check,
@@ -49,6 +50,17 @@ interface DerivedPDA {
   bump: number;
   seeds: SeedInput[];
 }
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.05,
+    },
+  },
+};
 
 export default function PDAPage() {
   const { program, programDetails, error } = useProgramStore();
@@ -182,31 +194,52 @@ export default function PDAPage() {
 
   if (error) {
     return (
-      <div className="w-full max-w-5xl mx-auto p-4 sm:p-6 lg:p-8">
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription className="ml-2">
-            <div className="font-medium mb-1">Program Initialization Failed</div>
-            <div className="text-sm opacity-90">{error.message}</div>
-          </AlertDescription>
-        </Alert>
+      <div className="w-full max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="ml-2">
+              <div className="font-medium mb-1">Program Initialization Failed</div>
+              <div className="text-sm opacity-90">{error.message}</div>
+            </AlertDescription>
+          </Alert>
+        </motion.div>
       </div>
     );
   }
 
   if (!program || !programDetails) {
-    return <ProgramNotFound />
+    return <ProgramNotFound />;
   }
 
   return (
-    <div className="w-full max-w-5xl mx-auto p-4 sm:p-6 lg:p-8">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="w-full max-w-6xl mx-auto p-4 sm:p-6 lg:p-8"
+    >
       <div className="space-y-6">
         {/* Header */}
-        <div className="space-y-2">
+        <motion.div className="space-y-2">
           <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-purple-500/10 p-2">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{
+                type: "spring",
+                stiffness: 120,
+                damping: 12,
+                delay: 0.1,
+              }}
+              className="rounded-lg bg-purple-500/10 p-2"
+            >
               <Hash className="h-5 w-5 text-purple-500" />
-            </div>
+            </motion.div>
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
                 PDA Derivation
@@ -216,244 +249,292 @@ export default function PDAPage() {
               </p>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Info Card */}
-        <Card>
-          <CardContent className="pt-4 pb-4">
-            <div className="flex gap-3">
-              <Sparkles className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-              <div className="space-y-1">
-                <p className="text-sm font-medium">
-                  How it works
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Add seeds in order, choose their type, and derive your PDA. Common patterns:
-                  <code className="mx-1 px-1.5 py-0.5 bg-muted rounded text-xs">
-                    [&quot;account_type&quot;, user_pubkey, id]
-                  </code>
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        {/* Program Info */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <KeyRound className="h-4 w-4" />
-              Program Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex items-center justify-between py-2 border-b last:border-0">
-              <span className="text-sm text-muted-foreground">Program ID</span>
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-sm">
-                  {program.programId.toBase58().slice(0, 8)}...
-                  {program.programId.toBase58().slice(-8)}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={() => copyToClipboard(program.programId.toBase58())}
-                >
-                  <Copy className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
-            {accountTypes.length > 0 && (
-              <div className="flex items-start justify-between py-2">
-                <span className="text-sm text-muted-foreground">
-                  Account Types
-                </span>
-                <div className="flex flex-wrap gap-1 justify-end max-w-xs">
-                  {accountTypes.map((type) => (
-                    <span
-                      key={type}
-                      className="text-xs px-2 py-1 bg-muted rounded-md font-mono"
-                    >
-                      {type}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Seed Configuration */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Configure Seeds</CardTitle>
-            <CardDescription>
-              Add and configure seeds for PDA derivation
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {seeds.map((seed, index) => (
-              <div
-                key={seed.id}
-                className="flex flex-col sm:flex-row gap-3 p-4 border rounded-lg bg-muted/20"
-              >
-                <div className="flex-1 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sm font-medium">
-                      Seed {index + 1}
-                    </Label>
-                    {seeds.length > 1 && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
-                        onClick={() => removeSeed(seed.id)}
-                      >
-                        Remove
-                      </Button>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label htmlFor={`type-${seed.id}`} className="text-xs">
-                        Type
-                      </Label>
-                      <Select
-                        value={seed.type}
-                        onValueChange={(value) =>
-                          updateSeed(seed.id, "type", value)
-                        }
-                      >
-                        <SelectTrigger id={`type-${seed.id}`} className="h-9">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="string">String</SelectItem>
-                          <SelectItem value="publicKey">Public Key</SelectItem>
-                          <SelectItem value="u64">u64</SelectItem>
-                          <SelectItem value="u32">u32</SelectItem>
-                          <SelectItem value="u16">u16</SelectItem>
-                          <SelectItem value="u8">u8</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor={`value-${seed.id}`} className="text-xs">
-                        Value
-                      </Label>
-                      <Input
-                        id={`value-${seed.id}`}
-                        placeholder={
-                          seed.type === "string"
-                            ? "e.g., user_account"
-                            : seed.type === "publicKey"
-                              ? "Base58 address"
-                              : "Number"
-                        }
-                        value={seed.value}
-                        onChange={(e) =>
-                          updateSeed(seed.id, "value", e.target.value)
-                        }
-                        className="h-9 font-mono text-sm"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={addSeed}
-                className="w-full sm:w-auto"
-              >
-                Add Seed
-              </Button>
-              <Button
-                onClick={derivePDA}
-                className="w-full sm:flex-1"
-                disabled={seeds.some((s) => !s.value.trim())}
-              >
-                <Hash className="h-4 w-4 mr-2" />
-                Derive PDA
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Error Display */}
-        {deriveError && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="ml-2">{deriveError}</AlertDescription>
-          </Alert>
-        )}
-
-        {/* Result Display */}
-        {derivedPDA && (
-          <Card className="border-green-200 bg-green-50/50 dark:bg-green-950/20 dark:border-green-900">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Check className="h-5 w-5 text-green-600" />
-                Derived PDA
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-sm">Address</Label>
-                <div className="flex items-center gap-2 p-3 bg-background border rounded-lg">
-                  <span className="font-mono text-sm flex-1 break-all">
-                    {derivedPDA.address}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 shrink-0"
-                    onClick={() => copyToClipboard(derivedPDA.address)}
-                  >
-                    {copied ? (
-                      <Check className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm">Bump</Label>
-                <div className="p-3 bg-background border rounded-lg">
-                  <span className="font-mono text-sm">{derivedPDA.bump}</span>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm">Seeds Used</Label>
-                <div className="space-y-2">
-                  {derivedPDA.seeds.map((seed, idx) => (
-                    <div
-                      key={seed.id}
-                      className="flex items-center justify-between p-2 bg-background border rounded text-sm"
-                    >
-                      <span className="text-muted-foreground">
-                        Seed {idx + 1} ({seed.type})
-                      </span>
-                      <span className="font-mono truncate ml-2 max-w-[200px]">
-                        {seed.value}
-                      </span>
-                    </div>
-                  ))}
+        <motion.div>
+          <Card>
+            <CardContent className="pt-4 pb-4">
+              <div className="flex gap-3">
+                <Sparkles className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">How it works</p>
+                  <p className="text-sm text-muted-foreground">
+                    Add seeds in order, choose their type, and derive your PDA. Common
+                    patterns:
+                    <code className="mx-1 px-1.5 py-0.5 bg-muted rounded text-xs">
+                      [&quot;account_type&quot;, user_pubkey, id]
+                    </code>
+                  </p>
                 </div>
               </div>
             </CardContent>
           </Card>
-        )}
+        </motion.div>
+
+        {/* Program Info */}
+        <motion.div>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <KeyRound className="h-4 w-4" />
+                Program Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="flex items-center justify-between py-2 border-b last:border-0">
+                <span className="text-sm text-muted-foreground">Program ID</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-sm">
+                    {program.programId.toBase58().slice(0, 8)}...
+                    {program.programId.toBase58().slice(-8)}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => copyToClipboard(program.programId.toBase58())}
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+              {accountTypes.length > 0 && (
+                <div className="flex items-start justify-between py-2">
+                  <span className="text-sm text-muted-foreground">
+                    Account Types
+                  </span>
+                  <div className="flex flex-wrap gap-1 justify-end max-w-xs">
+                    {accountTypes.map((type) => (
+                      <span
+                        key={type}
+                        className="text-xs px-2 py-1 bg-muted rounded-md font-mono"
+                      >
+                        {type}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Seed Configuration */}
+        <motion.div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Configure Seeds</CardTitle>
+              <CardDescription>
+                Add and configure seeds for PDA derivation
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <AnimatePresence mode="popLayout">
+                {seeds.map((seed, index) => (
+                  <motion.div
+                    key={seed.id}
+                    initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                    layout
+                    className="flex flex-col sm:flex-row gap-3 p-4 border rounded-lg bg-muted/20"
+                  >
+                    <div className="flex-1 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium">
+                          Seed {index + 1}
+                        </Label>
+                        {seeds.length > 1 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => removeSeed(seed.id)}
+                          >
+                            Remove
+                          </Button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label htmlFor={`type-${seed.id}`} className="text-xs">
+                            Type
+                          </Label>
+                          <Select
+                            value={seed.type}
+                            onValueChange={(value) =>
+                              updateSeed(seed.id, "type", value)
+                            }
+                          >
+                            <SelectTrigger id={`type-${seed.id}`} className="h-9">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="string">String</SelectItem>
+                              <SelectItem value="publicKey">Public Key</SelectItem>
+                              <SelectItem value="u64">u64</SelectItem>
+                              <SelectItem value="u32">u32</SelectItem>
+                              <SelectItem value="u16">u16</SelectItem>
+                              <SelectItem value="u8">u8</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor={`value-${seed.id}`} className="text-xs">
+                            Value
+                          </Label>
+                          <Input
+                            id={`value-${seed.id}`}
+                            placeholder={
+                              seed.type === "string"
+                                ? "e.g., user_account"
+                                : seed.type === "publicKey"
+                                  ? "Base58 address"
+                                  : "Number"
+                            }
+                            value={seed.value}
+                            onChange={(e) =>
+                              updateSeed(seed.id, "value", e.target.value)
+                            }
+                            className="h-9 font-mono text-sm transition-all duration-200 focus:shadow-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={addSeed}
+                  className="w-full sm:w-auto"
+                >
+                  Add Seed
+                </Button>
+                <Button
+                  onClick={derivePDA}
+                  className="w-full sm:flex-1"
+                  disabled={seeds.some((s) => !s.value.trim())}
+                >
+                  <Hash className="h-4 w-4 mr-2" />
+                  Derive PDA
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Error Display */}
+        <AnimatePresence>
+          {deriveError && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="ml-2">{deriveError}</AlertDescription>
+              </Alert>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Result Display */}
+        <AnimatePresence>
+          {derivedPDA && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.3, type: "spring", stiffness: 100 }}
+            >
+              <Card className="border-green-200 bg-green-50/50 dark:bg-green-950/20 dark:border-green-900">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Check className="h-5 w-5 text-green-600" />
+                    Derived PDA
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.1 }}
+                    className="space-y-2"
+                  >
+                    <Label className="text-sm">Address</Label>
+                    <div className="flex items-center gap-2 p-3 bg-background border rounded-lg">
+                      <span className="font-mono text-sm flex-1 break-all">
+                        {derivedPDA.address}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0"
+                        onClick={() => copyToClipboard(derivedPDA.address)}
+                      >
+                        {copied ? (
+                          <Check className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.15 }}
+                    className="space-y-2"
+                  >
+                    <Label className="text-sm">Bump</Label>
+                    <div className="p-3 bg-background border rounded-lg">
+                      <span className="font-mono text-sm">{derivedPDA.bump}</span>
+                    </div>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                    className="space-y-2"
+                  >
+                    <Label className="text-sm">Seeds Used</Label>
+                    <div className="space-y-2">
+                      {derivedPDA.seeds.map((seed, idx) => (
+                        <motion.div
+                          key={seed.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.25 + idx * 0.05 }}
+                          className="flex items-center justify-between p-2 bg-background border rounded text-sm"
+                        >
+                          <span className="text-muted-foreground">
+                            Seed {idx + 1} ({seed.type})
+                          </span>
+                          <span className="font-mono truncate ml-2 max-w-[200px]">
+                            {seed.value}
+                          </span>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </motion.div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-    </div>
+    </motion.div>
   );
 }

@@ -49,6 +49,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { IdlField, IdlTypeDef } from "@coral-xyz/anchor/dist/cjs/idl";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Copy button component with improved styling
 const CopyButton = ({
@@ -262,7 +263,7 @@ export function AccountTable({ data, accountType }: AccountTableProps) {
   }, [accountType]);
 
   const globalFilterFn = (
-    row: { getValue: (id: string) => unknown }, // Simplified interface
+    row: { getValue: (id: string) => unknown },
     columnId: string,
     filterValue: string
   ) => {
@@ -313,21 +314,36 @@ export function AccountTable({ data, accountType }: AccountTableProps) {
   const totalAccounts = table.getFilteredRowModel().rows.length;
 
   return (
-    <div className="flex flex-col rounded-xl border shadow-sm bg-card overflow-hidden">
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="flex flex-col rounded-xl border shadow-sm bg-card overflow-hidden"
+    >
       {/* Enhanced header with stats */}
-      <div className="px-6 py-4 flex flex-col sm:flex-row sm:items-center gap-4 border-b bg-muted/30">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.1 }}
+        className="px-6 py-4 flex flex-col sm:flex-row sm:items-center gap-4 border-b bg-muted/30"
+      >
         <div className="flex-1">
           <div className="relative">
             <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder={`Search ${accountType?.name || "accounts"}...`}
-              className="pl-10 h-10 bg-background border-input shadow-sm focus-visible:ring-2"
+              className="pl-10 h-10 bg-background border-input shadow-sm focus-visible:ring-2 transition-shadow duration-200"
               value={globalFilter}
               onChange={(e) => setGlobalFilter(e.target.value)}
             />
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.15 }}
+          className="flex items-center gap-3"
+        >
           <div className="flex items-center gap-2 text-sm">
             <div className="rounded-md bg-primary/10 px-3 py-1.5">
               <span className="font-semibold text-primary">{totalAccounts}</span>
@@ -336,8 +352,8 @@ export function AccountTable({ data, accountType }: AccountTableProps) {
               </span>
             </div>
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* Table */}
       <div className="overflow-x-auto">
@@ -407,45 +423,65 @@ export function AccountTable({ data, accountType }: AccountTableProps) {
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  className="border-b hover:bg-muted/50 transition-colors"
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="px-6 py-4">
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
+            <AnimatePresence mode="popLayout">
+              {table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row, index) => (
+                  <motion.tr
+                    key={row.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ 
+                      duration: 0.2,
+                      delay: Math.min(index * 0.03, 0.3)
+                    }}
+                    layout
+                    className="border-b hover:bg-muted/50 transition-colors"
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id} className="px-6 py-4">
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </TableCell>
+                    ))}
+                  </motion.tr>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell
+                    colSpan={columns.length}
+                    className="h-32 text-center"
+                  >
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex flex-col items-center justify-center gap-2 text-muted-foreground"
+                    >
+                      <FileText className="h-8 w-8 opacity-50" />
+                      <p className="text-sm font-medium">No accounts found</p>
+                      {globalFilter && (
+                        <p className="text-xs">Try adjusting your search</p>
                       )}
-                    </TableCell>
-                  ))}
+                    </motion.div>
+                  </TableCell>
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-32 text-center"
-                >
-                  <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                    <FileText className="h-8 w-8 opacity-50" />
-                    <p className="text-sm font-medium">No accounts found</p>
-                    {globalFilter && (
-                      <p className="text-xs">Try adjusting your search</p>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            )}
+              )}
+            </AnimatePresence>
           </TableBody>
         </Table>
       </div>
 
       {/* Enhanced pagination */}
       {table.getPageCount() > 0 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t bg-muted/20">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t bg-muted/20"
+        >
           <div className="flex items-center gap-4">
             <div className="text-sm text-muted-foreground">
               Page <span className="font-medium text-foreground">{table.getState().pagination.pageIndex + 1}</span> of{" "}
@@ -511,8 +547,8 @@ export function AccountTable({ data, accountType }: AccountTableProps) {
               <ChevronsRight className="h-4 w-4" />
             </Button>
           </div>
-        </div>
+        </motion.div>
       )}
-    </div>
+    </motion.div>
   );
 }

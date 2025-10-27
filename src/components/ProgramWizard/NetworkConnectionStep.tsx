@@ -27,6 +27,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface NetworkConnectionStepProps {
   onNext: () => void;
@@ -86,7 +87,6 @@ export default function NetworkConnectionStep({
 
   const checkRpcHealth = async (url: string) => {
     try {
-      // Try getHealth first
       const healthRes = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -95,7 +95,6 @@ export default function NetworkConnectionStep({
       const healthData = await healthRes.json();
       if (healthData?.result === "ok") return true;
 
-      // Fallback: getVersion (always supported)
       const versionRes = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -117,7 +116,6 @@ export default function NetworkConnectionStep({
     check();
   }, [selectedRpc, customRpcUrl]);
 
-  // Helper function to get health status display
   const getHealthStatusDisplay = () => {
     switch (rpcHealth) {
       case "checking":
@@ -152,19 +150,39 @@ export default function NetworkConnectionStep({
   const healthStatus = getHealthStatusDisplay();
 
   return (
-    <div className="flex h-full w-full flex-col">
-      <div className="mb-6">
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="flex h-full w-full flex-col"
+    >
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.1 }}
+        className="mb-6"
+      >
         <h2 className="text-2xl font-semibold tracking-tight">
           Network Connection Setup
         </h2>
         <p className="text-muted-foreground">
           Configure RPC endpoint and connect your wallet
         </p>
-      </div>
+      </motion.div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2 }}
+        className="grid gap-6 md:grid-cols-2"
+      >
         {/* RPC Endpoint Configuration Card */}
-        <div className="overflow-hidden rounded-lg border bg-card/50 shadow-sm">
+        <motion.div 
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.25 }}
+          className="overflow-hidden rounded-lg border bg-card/50 shadow-sm"
+        >
           <div className="border-b bg-muted/30 px-6 py-4">
             <div className="flex items-center gap-2">
               <ServerIcon className="h-5 w-5 text-primary" />
@@ -178,9 +196,12 @@ export default function NetworkConnectionStep({
             <div className="space-y-4">
               <div className="flex flex-col gap-4 rounded-lg border bg-muted/20 p-4">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                  <motion.div 
+                    whileHover={{ scale: 1.05 }}
+                    className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10"
+                  >
                     <Database className="h-5 w-5 text-primary" />
-                  </div>
+                  </motion.div>
                   <div className="flex-1 min-w-0">
                     <div className="font-medium truncate">
                       {getCurrentRpcDisplayName()}
@@ -192,24 +213,41 @@ export default function NetworkConnectionStep({
                 </div>
 
                 {/* RPC Health Status Display */}
-                {healthStatus && (
-                  <div className={`flex items-center gap-2 rounded-md border px-3 py-2 ${healthStatus.bgColor} ${healthStatus.borderColor}`}>
-                    {healthStatus.icon}
-                    <span className={`text-sm font-medium ${healthStatus.textColor}`}>
-                      {healthStatus.text}
-                    </span>
-                  </div>
-                )}
+                <AnimatePresence mode="wait">
+                  {healthStatus && (
+                    <motion.div 
+                      key={rpcHealth}
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 0.2 }}
+                      className={`flex items-center gap-2 rounded-md border px-3 py-2 ${healthStatus.bgColor} ${healthStatus.borderColor}`}
+                    >
+                      {healthStatus.icon}
+                      <span className={`text-sm font-medium ${healthStatus.textColor}`}>
+                        {healthStatus.text}
+                      </span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* Additional info for unhealthy state */}
-                {rpcHealth === "unhealthy" && (
-                  <div className="flex items-start gap-2 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 p-3 rounded-md border border-red-200 dark:border-red-900/30">
-                    <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                    <span>
-                      Unable to connect to this RPC endpoint. Please try a different endpoint or check your network connection.
-                    </span>
-                  </div>
-                )}
+                <AnimatePresence>
+                  {rpcHealth === "unhealthy" && (
+                    <motion.div 
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="flex items-start gap-2 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 p-3 rounded-md border border-red-200 dark:border-red-900/30"
+                    >
+                      <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                      <span>
+                        Unable to connect to this RPC endpoint. Please try a different endpoint or check your network connection.
+                      </span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               <div className="space-y-3 mt-4">
@@ -230,15 +268,22 @@ export default function NetworkConnectionStep({
                   </SelectContent>
                 </Select>
 
-                {selectedRpc === "mainnet-beta" && (
-                  <div className="flex items-start gap-2 text-xs text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-950/20 p-3 rounded-md">
-                    <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                    <span>
-                      Default mainnet RPC may have rate limits. Consider using a
-                      custom RPC provider for production applications.
-                    </span>
-                  </div>
-                )}
+                <AnimatePresence>
+                  {selectedRpc === "mainnet-beta" && (
+                    <motion.div 
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="flex items-start gap-2 text-xs text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-950/20 p-3 rounded-md overflow-hidden"
+                    >
+                      <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                      <span>
+                        Default mainnet RPC may have rate limits. Consider using a
+                        custom RPC provider for production applications.
+                      </span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {!isCustomRpcMode && selectedRpc !== "mainnet-beta" && (
                   <p className="text-xs text-muted-foreground px-1">
@@ -246,37 +291,47 @@ export default function NetworkConnectionStep({
                   </p>
                 )}
 
-                {isCustomRpcMode && (
-                  <form
-                    onSubmit={handleCustomRpcSave}
-                    className="flex gap-2 mt-3"
-                  >
-                    <input
-                      type="url"
-                      value={customRpcInput}
-                      onChange={(e) => setCustomRpcInput(e.target.value)}
-                      placeholder="https://api.mainnet-beta.solana.com"
-                      className="flex-1 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      autoFocus
-                      required
-                    />
-                    <Button
-                      type="submit"
-                      size="sm"
-                      className="h-10"
-                      disabled={!customRpcInput.trim()}
+                <AnimatePresence>
+                  {isCustomRpcMode && (
+                    <motion.form
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      onSubmit={handleCustomRpcSave}
+                      className="flex gap-2 mt-3 overflow-hidden"
                     >
-                      Apply
-                    </Button>
-                  </form>
-                )}
+                      <input
+                        type="url"
+                        value={customRpcInput}
+                        onChange={(e) => setCustomRpcInput(e.target.value)}
+                        placeholder="https://api.mainnet-beta.solana.com"
+                        className="flex-1 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        autoFocus
+                        required
+                      />
+                      <Button
+                        type="submit"
+                        size="sm"
+                        className="h-10"
+                        disabled={!customRpcInput.trim()}
+                      >
+                        Apply
+                      </Button>
+                    </motion.form>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Wallet Connection Card */}
-        <div className="overflow-hidden rounded-lg border bg-card/50 shadow-sm">
+        <motion.div 
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.3 }}
+          className="overflow-hidden rounded-lg border bg-card/50 shadow-sm"
+        >
           <div className="border-b bg-muted/30 px-6 py-4">
             <div className="flex items-center gap-2">
               <Wallet className="h-5 w-5 text-primary" />
@@ -287,65 +342,84 @@ export default function NetworkConnectionStep({
             </p>
           </div>
           <div className="p-6">
-            {publicKey ? (
-              <div className="flex flex-col gap-4 rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-900/30 dark:bg-green-900/10">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
-                    <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-green-800 dark:text-green-400">
-                      Wallet Connected
-                    </div>
-                    <div className="text-xs font-mono text-green-700/70 dark:text-green-500/70 truncate">
-                      {publicKey.toString().slice(0, 8)}...
-                      {publicKey.toString().slice(-8)}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-4 rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--muted)]">
-                    <Wallet className="h-5 w-5 text-[var(--primary)]" />
-                  </div>
-                  <div>
-                    <div className="font-medium text-[var(--foreground)]">
-                      No Wallet Connected
-                    </div>
-                    <div className="text-xs text-[var(--muted-foreground)]">
-                      Connect your wallet to proceed
-                    </div>
-                  </div>
-                </div>
-
-                <Button
-                  variant="outline"
-                  onClick={() => setVisible(true)}
-                  className="
-                    w-full 
-                    border-[var(--border)]
-                    bg-[var(--muted)]
-                    hover:bg-[var(--accent)]
-                    text-[var(--foreground)]
-                    transition-colors
-                    solana:bg-[var(--primary-gradient)]
-                    solana:text-[var(--primary-foreground)]
-                    solana:hover:bg-[var(--primary-gradient-hover)]
-                  "
+            <AnimatePresence mode="wait">
+              {publicKey ? (
+                <motion.div 
+                  key="connected"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.3 }}
+                  className="flex flex-col gap-4 rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-900/30 dark:bg-green-900/10"
                 >
-                  <Wallet className="mr-2 h-4 w-4" />
-                  Connect Wallet
-                </Button>
-              </div>
-            )}
+                  <div className="flex items-center gap-3">
+                    <motion.div 
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                      className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30"
+                    >
+                      <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    </motion.div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-green-800 dark:text-green-400">
+                        Wallet Connected
+                      </div>
+                      <div className="text-xs font-mono text-green-700/70 dark:text-green-500/70 truncate">
+                        {publicKey.toString().slice(0, 8)}...
+                        {publicKey.toString().slice(-8)}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div 
+                  key="disconnected"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.3 }}
+                  className="flex flex-col gap-4 rounded-lg border border-[var(--border)] bg-[var(--card)] p-4"
+                >
+                  <div className="flex items-center gap-3">
+                    <motion.div 
+                      whileHover={{ scale: 1.05 }}
+                      className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--muted)]"
+                    >
+                      <Wallet className="h-5 w-5 text-[var(--primary)]" />
+                    </motion.div>
+                    <div>
+                      <div className="font-medium text-[var(--foreground)]">
+                        No Wallet Connected
+                      </div>
+                      <div className="text-xs text-[var(--muted-foreground)]">
+                        Connect your wallet to proceed
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    onClick={() => setVisible(true)}
+                    className="w-full border-[var(--border)] bg-[var(--muted)] hover:bg-[var(--accent)] text-[var(--foreground)] transition-colors"
+                  >
+                    <Wallet className="mr-2 h-4 w-4" />
+                    Connect Wallet
+                  </Button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* Navigation Controls */}
-      <div className="mt-8 flex justify-between">
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.4 }}
+        className="mt-8 flex justify-between"
+      >
         <Button
           variant="outline"
           onClick={onBack}
@@ -362,7 +436,7 @@ export default function NetworkConnectionStep({
           Continue
           <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

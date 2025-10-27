@@ -27,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { motion } from "framer-motion";
 
 export interface TxItem {
   signature: string;
@@ -47,7 +48,6 @@ export function getExplorerUrl(
   explorerType: ExplorerType,
   rpcUrl: string
 ): string {
-  // Detect network from RPC URL
   const isMainnet = rpcUrl.includes("mainnet");
   const isDevnet = rpcUrl.includes("devnet");
   const isTestnet = rpcUrl.includes("testnet");
@@ -68,8 +68,9 @@ export function getExplorerUrl(
 
     case "solana":
     default:
-      return `https://explorer.solana.com/tx/${signature}?cluster=${cluster}${cluster === "custom" ? `&customUrl=${encodeURIComponent(rpcUrl)}` : ""
-        }`;
+      return `https://explorer.solana.com/tx/${signature}?cluster=${cluster}${
+        cluster === "custom" ? `&customUrl=${encodeURIComponent(rpcUrl)}` : ""
+      }`;
   }
 }
 
@@ -165,10 +166,11 @@ export function TransactionTable({ data, filter }: TransactionTableProps) {
           const value = getValue() as string;
           const isSuccess = value === "Success";
           return (
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isSuccess
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+              isSuccess
                 ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
                 : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
-              }`}>
+            }`}>
               {value}
             </span>
           );
@@ -188,11 +190,16 @@ export function TransactionTable({ data, filter }: TransactionTableProps) {
     },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    onGlobalFilterChange: () => { },
+    onGlobalFilterChange: () => {},
   });
 
   return (
-    <div className="flex flex-col rounded-xl border shadow-sm bg-card overflow-hidden">
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="flex flex-col rounded-xl border shadow-sm bg-card overflow-hidden"
+    >
       {/* Explorer selector header */}
       <div className="px-6 py-3 border-b bg-muted/30 flex items-center justify-between">
         <div className="text-sm font-medium text-muted-foreground">
@@ -235,8 +242,14 @@ export function TransactionTable({ data, filter }: TransactionTableProps) {
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows.length > 0 ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} className="hover:bg-muted/50 transition-colors">
+              table.getRowModel().rows.map((row, index) => (
+                <motion.tr
+                  key={row.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.03, duration: 0.2 }}
+                  className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
+                >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id} className="px-6 py-4">
                       {flexRender(
@@ -245,7 +258,7 @@ export function TransactionTable({ data, filter }: TransactionTableProps) {
                       )}
                     </TableCell>
                   ))}
-                </TableRow>
+                </motion.tr>
               ))
             ) : (
               <TableRow>
@@ -265,6 +278,6 @@ export function TransactionTable({ data, filter }: TransactionTableProps) {
           </TableBody>
         </Table>
       </div>
-    </div>
+    </motion.div>
   );
 }

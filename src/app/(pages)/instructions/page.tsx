@@ -240,7 +240,9 @@ export default function InstructionBuilderPage() {
 
         if (isEnum && resolvedType.variants && resolvedType.variants.length > 0) {
           const firstVariant = resolvedType.variants[0].name;
-          initialArgs[arg.name] = { [firstVariant]: {} };
+          // Convert PascalCase to camelCase
+          const camelCaseVariant = firstVariant.charAt(0).toLowerCase() + firstVariant.slice(1);
+          initialArgs[arg.name] = { [camelCaseVariant]: {} };
         } else {
           initialArgs[arg.name] = "";
         }
@@ -279,37 +281,158 @@ export default function InstructionBuilderPage() {
     setResult(null);
 
     try {
-      // 1. Prepare arguments
-      const processedArgs = processArgs(args, instruction);
+      // Helper function to resolve defined types
+      const resolveType = (type: IdlType): IdlType | { kind: "struct" | "enum"; fields?: Array<{ name: string; type: unknown }>; variants?: Array<{ name: string; fields?: unknown[] }> } => {
+        if (typeof type === "object" && "option" in type) {
+          type = type.option;
+        }
+        if (typeof type === "object" && "defined" in type) {
+          let typeName: string;
+          if (typeof type.defined === "string") {
+            typeName = type.defined;
+          } else if (typeof type.defined === "object" && "name" in type.defined) {
+            typeName = type.defined.name;
+          } else {
+            return type;
+          }
+          const definedType = programDetails?.types?.find(
+            (t) => t.name.toLowerCase() === typeName.toLowerCase()
+          );
+          return definedType?.type || type;
+        }
+        return type;
+      };
+
+      // 1. Prepare arguments with proper enum handling
+      const processedArgs = instruction.args.map((arg) => {
+        const value = args[arg.name];
+
+        console.log(`Processing arg: ${arg.name}`, { value, type: arg.type });
+
+        // Resolve the actual type (handles 'defined' types)
+        const resolvedType = resolveType(arg.type);
+
+        // Check if this is an enum type
+        const isEnum = typeof resolvedType === "object" &&
+          "kind" in resolvedType &&
+          resolvedType.kind === "enum";
+
+        // If it's an enum, ensure it's in the correct format
+        if (isEnum) {
+          if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+            const keys = Object.keys(value);
+            // Must be in format { VariantName: {} }
+            if (keys.length === 1) {
+              const variantName = keys[0];
+              const variantValue = value[variantName as keyof typeof value];
+
+              // Ensure the variant value is an object (even if empty)
+              const result = {
+                [variantName]: typeof variantValue === 'object' && variantValue !== null
+                  ? variantValue
+                  : {}
+              };
+
+              console.log(`Enum ${arg.name} formatted:`, result);
+              return result;
+            }
+          }
+          throw new Error(`Invalid enum value for ${arg.name}. Expected format: { VariantName: {} }`);
+        }
+
+        // Handle option types (check original type, not resolved)
+        if (typeof arg.type === "object" && "option" in arg.type) {
+          if (!value || value === "") return null;
+
+          // Get the inner type
+          const innerType = arg.type.option;
+
+          if (typeof innerType === "string") {
+            switch (innerType) {
+              case "u8":
+              case "i8":
+              case "u16":
+              case "i16":
+              case "u32":
+              case "i32":
+              case "u64":
+              case "i64":
+              case "u128":
+              case "i128":
+              case "u256":
+              case "i256":
+                return new BN(value);
+              case "pubkey":
+                return new PublicKey(value as string);
+              default:
+                return value;
+            }
+          }
+
+          return value;
+        }
+
+        // Handle primitive types
+        if (typeof arg.type === "string") {
+          switch (arg.type) {
+            case "u8":
+            case "i8":
+            case "u16":
+            case "i16":
+            case "u32":
+            case "i32":
+            case "u64":
+            case "i64":
+            case "u128":
+            case "i128":
+            case "u256":
+            case "i256":
+              return value ? new BN(value) : new BN(0);
+            case "pubkey":
+              return value ? new PublicKey(value as string) : null;
+            case "bool":
+              return Boolean(value);
+            case "string":
+              return value || "";
+            default:
+              return value;
+          }
+        }
+
+        // Handle vec types
+        if (typeof arg.type === "object" && "vec" in arg.type) {
+          if (!value) return [];
+          if (Array.isArray(value)) return value;
+          return [value];
+        }
+
+        // Default: return as-is
+        return value;
+      });
+
+      console.log("Final processed args:", processedArgs);
 
       // 2. Create method builder with args
       const methodBuilder = program.methods[instruction.name](...processedArgs);
 
       // 3. Resolve accounts
       const accountsObject: Record<string, PublicKey> = {};
-      const unresolvedAccounts: string[] = [];
 
-      // If we have unresolved required accounts, show an error
-      if (unresolvedAccounts.length > 0) {
-        throw new Error(
-          `The following required accounts could not be resolved automatically: ${unresolvedAccounts.join(
-            ", "
-          )}. Please provide them manually.`
-        );
-      }
-
-      // 4. Add any remaining accounts that were provided manually
+      // 4. Add any accounts that were provided manually
       for (const [name, value] of Object.entries(accounts)) {
-        if (value && !accountsObject[name]) {
+        if (value) {
           try {
             accountsObject[name] = new PublicKey(value);
           } catch (err) {
             console.warn(`Invalid public key for account ${name}:`, err);
+            throw new Error(`Invalid public key for account "${name}": ${value}`);
           }
         }
       }
 
-      // 5. Build transaction instead of sending directly
+      console.log("Accounts object:", accountsObject);
+
+      // 5. Build transaction
       const transaction = await methodBuilder
         .accounts(accountsObject)
         .transaction();
@@ -321,12 +444,12 @@ export default function InstructionBuilderPage() {
 
       // 6. Send transaction through wallet for user signature
       const txSignature = await sendTransaction(transaction, connection, {
-        skipPreflight: true,
+        skipPreflight: false,
       });
 
       console.log("Transaction sent with signature:", txSignature);
 
-      // 7. Optionally confirm the transaction
+      // 7. Confirm the transaction
       const confirmation = await connection.confirmTransaction({
         signature: txSignature,
         blockhash,
@@ -334,7 +457,7 @@ export default function InstructionBuilderPage() {
       });
 
       if (confirmation.value.err) {
-        throw new Error("Transaction failed");
+        throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
       }
 
       setResult({ signature: txSignature });
@@ -657,7 +780,10 @@ export default function InstructionBuilderPage() {
                                       const getSelectedEnumVariant = (value: unknown): string => {
                                         if (typeof value === "object" && value !== null) {
                                           const keys = Object.keys(value);
-                                          return keys.length > 0 ? keys[0] : "";
+                                          if (keys.length > 0) {
+                                            const variant = keys[0];
+                                            return variant.charAt(0).toUpperCase() + variant.slice(1);
+                                          }
                                         }
                                         return "";
                                       };
@@ -688,7 +814,11 @@ export default function InstructionBuilderPage() {
                                           {isEnum ? (
                                             <Select
                                               value={getSelectedEnumVariant(args[arg.name])}
-                                              onValueChange={(value) => handleArgChange(arg.name, { [value]: {} })}
+                                              onValueChange={(value) => {
+                                                // Convert PascalCase to camelCase for Anchor
+                                                const camelCaseVariant = value.charAt(0).toLowerCase() + value.slice(1);
+                                                handleArgChange(arg.name, { [camelCaseVariant]: {} });
+                                              }}
                                             >
                                               <SelectTrigger>
                                                 <SelectValue placeholder={`Select ${arg.name}`} />

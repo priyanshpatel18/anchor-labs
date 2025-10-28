@@ -2,7 +2,9 @@
 
 import { AccountData } from "@/components/AccountTable";
 import ProgramNotFound from "@/components/ProgramNotFound";
+import { Spinner } from "@/components/ui/8bit/spinner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAccountData } from "@/hooks/useAccountData";
 import { useAutoReinitialize } from "@/hooks/useAutoReinitialize";
@@ -10,7 +12,7 @@ import useProgramStore from "@/stores/programStore";
 import { IdlAccount } from "@coral-xyz/anchor/dist/cjs/idl";
 import { useAnchorWallet } from "@solana/wallet-adapter-react";
 import { motion } from "framer-motion";
-import { AlertCircle, Database, Inbox, Loader2 } from "lucide-react";
+import { AlertCircle, Database, Inbox, RefreshCw } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 
@@ -21,7 +23,7 @@ const AccountTable = dynamic(
     loading: () => (
       <div className="flex items-center justify-center p-12">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <Spinner className="size-16" />
           <p className="text-sm text-muted-foreground">Loading accounts...</p>
         </div>
       </div>
@@ -42,6 +44,7 @@ function AccountTabContent({
     data: accountsData,
     isLoading,
     error,
+    refetch,
   } = useAccountData(
     program!,
     account.name as never,
@@ -69,7 +72,7 @@ function AccountTabContent({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Spinner className="size-16" />
       </div>
     );
   }
@@ -106,7 +109,22 @@ function AccountTabContent({
     );
   }
 
-  return <AccountTable data={transformedData} accountType={accountType} />;
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button
+          onClick={() => refetch()}
+          variant="outline"
+          size="sm"
+          className="gap-2"
+        >
+          <RefreshCw className="h-4 w-4" />
+          Refresh
+        </Button>
+      </div>
+      <AccountTable data={transformedData} accountType={accountType} />
+    </div>
+  );
 }
 
 export default function AccountsPage() {
@@ -138,14 +156,14 @@ export default function AccountsPage() {
 
   if (accounts.length === 0) {
     return (
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
         className="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8"
       >
         <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-xl bg-muted/20">
-          <motion.div 
+          <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.2, type: "spring", stiffness: 200, damping: 15 }}
@@ -163,7 +181,7 @@ export default function AccountsPage() {
   }
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4 }}
@@ -171,14 +189,14 @@ export default function AccountsPage() {
     >
       <div className="space-y-6">
         {/* Header Section */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
           className="space-y-2"
         >
           <div className="flex items-center gap-3">
-            <motion.div 
+            <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.2, type: "spring", stiffness: 200, damping: 15 }}

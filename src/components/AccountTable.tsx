@@ -92,6 +92,26 @@ const CopyButton = ({
   );
 };
 
+// Helper function to format enum values
+const formatEnumValue = (value: unknown): string => {
+  if (typeof value === "object" && value !== null) {
+    const keys = Object.keys(value);
+    if (keys.length === 1) {
+      const enumKey = keys[0];
+      const enumValue = (value as Record<string, unknown>)[enumKey];
+      
+      // If the enum value is an empty object, just return the key
+      if (typeof enumValue === "object" && enumValue !== null && Object.keys(enumValue).length === 0) {
+        return enumKey;
+      }
+      
+      // If there's a nested value, format it
+      return `${enumKey}: ${JSON.stringify(enumValue)}`;
+    }
+  }
+  return String(value);
+};
+
 export type AccountData = {
   publicKey: string;
   account: Record<string, unknown>;
@@ -182,11 +202,24 @@ export function AccountTable({ data, accountType }: AccountTableProps) {
               case "bool":
                 return value ? "Yes" : "No";
               default:
+                // Check if it's an enum (object with single key and empty object value)
+                if (typeof value === "object" && value !== null) {
+                  const keys = Object.keys(value);
+                  if (keys.length === 1) {
+                    return formatEnumValue(value);
+                  }
+                }
                 return value;
             }
           },
           cell: ({ getValue }) => {
             const value = getValue();
+            
+            // Check if this is an enum value
+            const rawValue = typeof value === "string" && value.includes(": ") 
+              ? value.split(": ")[0] 
+              : value;
+            
             const displayValue =
               typeof value === "object" && value !== null
                 ? JSON.stringify(value, null, 2)

@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { JsonEditor } from "@/components/ui/json-editor";
 import { ArrowRight, Code2, FileJson, Upload } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import ProgramToIdl from "../ui/program-to-idl";
 
-type IdlInputMethod = "editor" | "upload";
+type IdlInputMethod = "editor" | "upload" | "get-idl-from-address";
 
 const MAX_FILE_SIZE_MB = 5;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
@@ -20,7 +21,9 @@ interface IdlConfigurationStepProps {
 export default function IdlConfigurationStep({
   onNext,
 }: IdlConfigurationStepProps) {
-  const [inputMethod, setInputMethod] = useState<IdlInputMethod>("editor");
+  const [inputMethod, setInputMethod] = useState<IdlInputMethod>(
+    "get-idl-from-address"
+  );
   const [isDragActive, setIsDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -139,13 +142,13 @@ export default function IdlConfigurationStep({
   }, []);
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
       className="flex h-full w-full flex-col"
     >
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.1 }}
@@ -159,13 +162,24 @@ export default function IdlConfigurationStep({
         </p>
       </motion.div>
 
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
         className="flex mb-4"
       >
         <div className="inline-flex h-10 items-center justify-center gap-1 rounded-md bg-muted p-1">
+          <button
+            onClick={() => setInputMethod("get-idl-from-address")}
+            className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+              inputMethod === "get-idl-from-address"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:bg-muted/80"
+            }`}
+          >
+            <Code2 className="mr-2 h-4 w-4" />
+            Get IDL from Address
+          </button>
           <button
             onClick={() => setInputMethod("editor")}
             className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
@@ -191,7 +205,7 @@ export default function IdlConfigurationStep({
         </div>
       </motion.div>
 
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.3 }}
@@ -223,6 +237,17 @@ export default function IdlConfigurationStep({
                   Use the Format button to beautify your JSON
                 </div>
               </div>
+            </motion.div>
+          ) : inputMethod === "get-idl-from-address" ? (
+            <motion.div
+              key="get-idl-from-address"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+              className="flex flex-1 flex-col overflow-hidden rounded-lg border bg-card/50 shadow-sm h-full"
+            >
+              <ProgramToIdl setInputMethod={setInputMethod} />
             </motion.div>
           ) : (
             <motion.div
@@ -262,10 +287,10 @@ export default function IdlConfigurationStep({
                     ref={fileInputRef}
                     onChange={handleFileInputChange}
                   />
-                  <motion.div 
-                    animate={{ 
+                  <motion.div
+                    animate={{
                       y: isDragActive ? -5 : 0,
-                      scale: isDragActive ? 1.1 : 1 
+                      scale: isDragActive ? 1.1 : 1,
                     }}
                     transition={{ duration: 0.2 }}
                     className="mb-4 rounded-full bg-primary/10 p-3"
@@ -278,7 +303,10 @@ export default function IdlConfigurationStep({
                   <div className="mb-6 text-sm text-muted-foreground">
                     Supports .json files up to {MAX_FILE_SIZE_MB}MB
                   </div>
-                  <Button variant="outline" className="gap-2 pointer-events-none">
+                  <Button
+                    variant="outline"
+                    className="gap-2 pointer-events-none"
+                  >
                     <Upload className="h-4 w-4" />
                     Select JSON File
                   </Button>
@@ -289,7 +317,7 @@ export default function IdlConfigurationStep({
         </AnimatePresence>
       </motion.div>
 
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.4 }}

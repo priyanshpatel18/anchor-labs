@@ -2,7 +2,7 @@
  * Type definitions for the Program Initialization Wizard
  */
 
-export type IdlInputMethod = 'editor' | 'upload';
+export type IdlInputMethod = "editor" | "upload" | "get-idl-from-address";
 
 export type WizardStepId = 1 | 2 | 3;
 
